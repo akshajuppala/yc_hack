@@ -776,5 +776,101 @@
   margin-top: 1px;
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   WEBCAM / SIMULATED CAMERA FEED
+   ═══════════════════════════════════════════════════════════════════════════ */
+.wcf { display: flex; flex-direction: column; height: 100%; }
+.wcf-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.wcf-title { font-size: 11px; font-weight: 700; letter-spacing: 2px; color: #888; }
+.wcf-badge { display: inline-flex; align-items: center; gap: 5px; font-size: 9px; font-weight: 700; letter-spacing: 1.5px; color: #00ff88; }
+
+.wcf-viewport {
+  position: relative; flex: 1; min-height: 200px;
+  border-radius: 14px; overflow: hidden;
+  background: #060610; border: 1px solid #1a1a2e;
+}
+
+.wcf-video { width: 100%; height: 100%; object-fit: cover; display: block; }
+.wcf-scanline {
+  position: absolute; inset: 0; pointer-events: none; z-index: 2;
+  background: repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0,255,136,0.015) 3px, rgba(0,255,136,0.015) 4px);
+}
+
+.wcf-placeholder {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  width: 100%; height: 100%; min-height: 200px; gap: 8px; color: #555; font-size: 12px;
+}
+
+.webcam-spinner {
+  width: 28px; height: 28px; border: 3px solid #1a1a2e; border-top-color: #00ff88;
+  border-radius: 50%; animation: webcam-spin 0.8s linear infinite;
+}
+@keyframes webcam-spin { to { transform: rotate(360deg); } }
+
+.wcf-bracket { position: absolute; width: 20px; height: 20px; z-index: 5; pointer-events: none; }
+.wcf-bracket-tl { top: 8px; left: 8px; border-top: 2px solid #00ff88; border-left: 2px solid #00ff88; }
+.wcf-bracket-tr { top: 8px; right: 8px; border-top: 2px solid #00ff88; border-right: 2px solid #00ff88; }
+.wcf-bracket-bl { bottom: 8px; left: 8px; border-bottom: 2px solid #00ff88; border-left: 2px solid #00ff88; }
+.wcf-bracket-br { bottom: 8px; right: 8px; border-bottom: 2px solid #00ff88; border-right: 2px solid #00ff88; }
+
+/* ── Simulated camera view ──────────────────────────────────────────────── */
+.sim-cam {
+  position: relative; width: 100%; height: 100%; min-height: 200px; overflow: hidden;
+}
+
+.sim-cam-bg {
+  position: absolute; inset: 0;
+  background: radial-gradient(ellipse at 50% 40%, #0d1a12 0%, #060610 70%);
+}
+
+.sim-cam-grid {
+  position: absolute; inset: 0; z-index: 1; pointer-events: none;
+  background-image:
+    linear-gradient(rgba(0,255,136,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,255,136,0.04) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+
+.sim-cam-scan {
+  position: absolute; left: 0; right: 0; height: 2px; z-index: 3;
+  background: linear-gradient(90deg, transparent 0%, #00ff8866 30%, #00ff88 50%, #00ff8866 70%, transparent 100%);
+  box-shadow: 0 0 12px 2px rgba(0,255,136,0.2);
+  pointer-events: none;
+}
+
+.sim-cam-det {
+  position: absolute; z-index: 4;
+  display: flex; align-items: center; gap: 5px;
+  background: rgba(0,255,136,0.06);
+  border: 1px solid rgba(0,255,136,0.2); border-radius: 6px;
+  padding: 3px 8px; font-size: 9px; font-weight: 600;
+  letter-spacing: 0.5px; color: #00ff88;
+  animation: det-pop 0.4s ease-out;
+  white-space: nowrap;
+}
+
+@keyframes det-pop {
+  from { opacity: 0; transform: scale(0.9); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+.sim-cam-det-dot {
+  width: 5px; height: 5px; border-radius: 50%; background: #00ff88; flex-shrink: 0;
+  animation: rec-pulse 1.5s ease-in-out infinite;
+}
+
+.sim-cam-reticle {
+  position: absolute; top: 50%; left: 50%; z-index: 2;
+  transform: translate(-50%, -50%);
+  animation: reticle-rotate 12s linear infinite;
+}
+@keyframes reticle-rotate { to { transform: translate(-50%, -50%) rotate(360deg); } }
+
+.sim-cam-ts {
+  position: absolute; bottom: 8px; left: 10px; z-index: 4;
+  font-size: 9px; font-weight: 600; letter-spacing: 1px; color: #00ff8888;
+  font-variant-numeric: tabular-nums;
+}
+
 /* ── Global resets (safe) ───────────────────────────────────────────────── */
 body { margin: 0; }
