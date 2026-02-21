@@ -1,29 +1,55 @@
+# Backend
+backend/test_data
+backend/.env
+backend/__pycache__
+backend/.pytest_cache
+backend/venv
+backend/.venv
+
 # Dependencies
 node_modules/
+.pnpm-store/
 
-# Environment files
+# Build output
+dist/
+build/
+.mcp-use/
+.vite/
+
+# TypeScript
+*.tsbuildinfo
+*.d.ts.map
+
+# Testing
+coverage/
+
+# Linting
+.eslintcache
+
+# Environment
 .env
 .env.local
+.env.development.local
+.env.test.local
+.env.production.local
 .env.*.local
 
 # Logs
 logs/
 *.log
 npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
-# OS files
+# OS
 .DS_Store
 Thumbs.db
+*.pem
 
 # IDE
-.idea/
 .vscode/
+.idea/
 *.swp
 *.swo
-
-# Build output
-dist/
-build/
-
-# MCP-Use generated
-*.d.ts.map
+*~

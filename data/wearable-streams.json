@@ -1,0 +1,29 @@
+{
+  "capturedAt": "2026-02-21T08:30:00Z",
+  "streams": [
+    {
+      "source": "smart_watch",
+      "signal": "recovery_score",
+      "today": 81,
+      "target": 85
+    },
+    {
+      "source": "smart_watch",
+      "signal": "steps",
+      "today": 9200,
+      "target": 10000
+    },
+    {
+      "source": "smart_glasses",
+      "signal": "focus_minutes",
+      "today": 184,
+      "target": 180
+    },
+    {
+      "source": "smart_glasses",
+      "signal": "posture_alerts",
+      "today": 6,
+      "target": 3
+    }
+  ]
+}
