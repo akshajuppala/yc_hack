@@ -24,3 +24,6 @@ Thumbs.db
 # Build output
 dist/
 build/
+
+# MCP-Use generated
+*.d.ts.map
