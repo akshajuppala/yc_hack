@@ -58,7 +58,7 @@ export const CameraFeed: React.FC<CameraFeedProps> = ({ events }) => {
   return (
     <div className="camera-feed">
       <div className="camera-header">
-        <span className="camera-title">\uD83D\uDCF7 CAMERA FEED</span>
+        <span className="camera-title">{"\uD83D\uDCF7"} CAMERA FEED</span>
         <span className="camera-badge">
           <span className="rec-dot" /> REC
         </span>
