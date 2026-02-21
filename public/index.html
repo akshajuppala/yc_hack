@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Blueprint Health Optimizer</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #0a0a12;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      padding: 20px;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
+    }
+    #widget-container {
+      width: 100%;
+      max-width: 1200px;
+    }
+    iframe {
+      width: 100%;
+      height: 100vh;
+      border: none;
+      border-radius: 24px;
+    }
+  </style>
+</head>
+<body>
+  <div id="widget-container">
+    <iframe src="/mcp-use/widgets/health-dashboard"></iframe>
+  </div>
+</body>
+</html>

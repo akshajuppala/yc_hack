@@ -87,6 +87,25 @@ const Stat: React.FC<{ label: string; value: string | number; unit: string; colo
   </div>
 );
 
+// ── Types for live data ─────────────────────────────────────────────────────
+interface SmartWatchData {
+  heart_rate_bpm: number;
+  blood_oxygen_spo2: number;
+  sleep_score: number;
+  steps_today: number;
+  calories_burned: number;
+  stress_level: string;
+  body_temperature_f: number;
+  respiratory_rate: number;
+  hrv_ms: number;
+  active_minutes: number;
+}
+
+interface AnalysisResult {
+  status: string;
+  description: string;
+}
+
 // ── Main Dashboard ───────────────────────────────────────────────────────────
 const HealthDashboard: React.FC = () => {
   const { props, isPending, sendFollowUpMessage } =
@@ -99,6 +118,41 @@ const HealthDashboard: React.FC = () => {
     return () => clearInterval(id);
   }, []);
 
+  // Live data from backend
+  const [liveWatchData, setLiveWatchData] = useState<SmartWatchData | null>(null);
+  const [liveAnalysis, setLiveAnalysis] = useState<AnalysisResult | null>(null);
+  const [cameraDetections, setCameraDetections] = useState<Array<{
+    id: number;
+    timestamp: string;
+    type: string;
+    item: string;
+    confidence: number;
+    status: string;
+    icon: string;
+  }>>([]);
+
+  // Handle smart watch updates
+  const handleSmartWatchUpdate = (data: SmartWatchData) => {
+    setLiveWatchData(data);
+  };
+
+  // Handle analysis updates and add to camera events
+  const handleAnalysisUpdate = (result: AnalysisResult) => {
+    setLiveAnalysis(result);
+    if (result.status !== "not detected") {
+      const newEvent = {
+        id: Date.now(),
+        timestamp: new Date().toISOString(),
+        type: result.status,
+        item: result.description.slice(0, 50),
+        confidence: result.status === "finished" ? 95 : result.status === "in progress" ? 80 : 60,
+        status: result.status,
+        icon: result.status === "finished" ? "✅" : result.status === "in progress" ? "🔄" : "🎯",
+      };
+      setCameraDetections((prev) => [newEvent, ...prev].slice(0, 10));
+    }
+  };
+
   if (isPending) return <DashboardSkeleton />;
 
   const {
@@ -110,6 +164,15 @@ const HealthDashboard: React.FC = () => {
     profileName,
     summary,
   } = props;
+
+  // Merge live data with props
+  const displayHR = liveWatchData?.heart_rate_bpm ?? summary.latestHR;
+  const displayHRV = liveWatchData?.hrv_ms ?? summary.latestHRV;
+  const displaySpO2 = liveWatchData?.blood_oxygen_spo2 ?? vitals.spo2[vitals.spo2.length - 1];
+  const displayTemp = liveWatchData ? ((liveWatchData.body_temperature_f - 32) * 5/9).toFixed(1) : vitals.skinTemp[vitals.skinTemp.length - 1];
+  
+  // Combine static and live camera events
+  const allCameraEvents = [...cameraDetections, ...cameraEvents].slice(0, 15);
 
   return (
     <McpUseProvider>
@@ -136,13 +199,13 @@ const HealthDashboard: React.FC = () => {
 
         {/* ── Quick Stats ───────────────────────────────── */}
         <div className="bp-stats-row">
-          <Stat label="HEART RATE" value={summary.latestHR} unit="bpm" color="#00ff88" />
-          <Stat label="HRV" value={summary.latestHRV} unit="ms" color="#00ccff" />
-          <Stat label="SpO2" value={vitals.spo2[vitals.spo2.length - 1]} unit="%" color="#a78bfa" />
-          <Stat label="SKIN TEMP" value={vitals.skinTemp[vitals.skinTemp.length - 1]} unit="°C" color="#f59e0b" />
+          <Stat label="HEART RATE" value={displayHR} unit="bpm" color="#00ff88" />
+          <Stat label="HRV" value={displayHRV} unit="ms" color="#00ccff" />
+          <Stat label="SpO2" value={displaySpO2} unit="%" color="#a78bfa" />
+          <Stat label="SKIN TEMP" value={displayTemp} unit="°C" color="#f59e0b" />
           <Stat
             label="CALORIES"
-            value={`${summary.caloriesConsumed}/${summary.caloriesTarget}`}
+            value={liveWatchData ? liveWatchData.calories_burned : `${summary.caloriesConsumed}/${summary.caloriesTarget}`}
             unit="kcal"
             color="#ff6b6b"
           />
@@ -161,10 +224,13 @@ const HealthDashboard: React.FC = () => {
         {/* ── Row 1: Webcam + Camera Events ─────────────── */}
         <div className="bp-split">
           <div className="bp-card bp-split-cell">
-            <WebcamFeed />
+            <WebcamFeed 
+              onSmartWatchUpdate={handleSmartWatchUpdate}
+              onAnalysisUpdate={handleAnalysisUpdate}
+            />
           </div>
           <div className="bp-card bp-split-cell">
-            <CameraFeed events={cameraEvents} />
+            <CameraFeed events={allCameraEvents} />
           </div>
         </div>
 

@@ -9,8 +9,20 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const dataDir = path.join(__dirname, "data");
 
+const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:8000";
+
 function load<T>(fileName: string): T {
   return JSON.parse(readFileSync(path.join(dataDir, fileName), "utf-8")) as T;
+}
+
+async function callBackend(endpoint: string, options?: RequestInit) {
+  try {
+    const res = await fetch(`${BACKEND_URL}${endpoint}`, options);
+    if (!res.ok) throw new Error(`Backend error: ${res.status}`);
+    return await res.json();
+  } catch (e) {
+    throw new Error(`Backend unavailable: ${e instanceof Error ? e.message : String(e)}`);
+  }
 }
 
 // ── server ───────────────────────────────────────────────────────────────────
@@ -188,7 +200,58 @@ server.tool(
   }
 );
 
+// ── Tool 4: Get Smart Watch Data (from Python backend) ─────────────────────
+server.tool(
+  {
+    name: "get-smart-watch-data",
+    description:
+      "Get real-time smart watch health data from the backend (heart rate, SpO2, HRV, steps, calories, stress level, temperature)",
+    schema: z.object({}),
+  },
+  async () => {
+    try {
+      const data = await callBackend("/api/smart-watch-data");
+      return object(data);
+    } catch (e) {
+      return error(e instanceof Error ? e.message : String(e));
+    }
+  }
+);
+
+// ── Tool 5: Analyze Camera Frame (from Python backend) ──────────────────────
+server.tool(
+  {
+    name: "analyze-frame",
+    description:
+      "Send a camera frame to the backend for AI analysis to detect health-related actions (taking supplements, drinking water, eating, exercising)",
+    schema: z.object({
+      imageBase64: z.string().describe("Base64 encoded image data"),
+      currentAction: z
+        .string()
+        .optional()
+        .default("taking a supplement")
+        .describe("The action to detect"),
+    }),
+  },
+  async ({ imageBase64, currentAction }) => {
+    try {
+      const data = await callBackend("/api/analyze-frame", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          image_base64: imageBase64,
+          current_action: currentAction,
+        }),
+      });
+      return object(data);
+    } catch (e) {
+      return error(e instanceof Error ? e.message : String(e));
+    }
+  }
+);
+
 // ── start ────────────────────────────────────────────────────────────────────
 server.listen().then(() => {
-  console.log("Blueprint Health Optimizer — MCP server running");
+  console.log("Blueprint Health Optimizer — MCP server running on port 3000");
+  console.log("Make sure Python backend is running on port 8000");
 });

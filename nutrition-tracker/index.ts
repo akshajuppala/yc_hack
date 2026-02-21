@@ -38,8 +38,9 @@ interface FoodItem {
 
 const sessionFoods: FoodItem[] = [];
 
-// Nutritional database (approximate values per 100g)
+// Nutritional database (approximate values per 100g or per serving for supplements)
 const nutritionDatabase: Record<string, FoodItem["nutrition"]> = {
+  // Regular foods
   apple: { calories: 52, protein: 0.3, carbs: 14, fat: 0.2, fiber: 2.4, sugar: 10 },
   banana: { calories: 89, protein: 1.1, carbs: 23, fat: 0.3, fiber: 2.6, sugar: 12 },
   orange: { calories: 47, protein: 0.9, carbs: 12, fat: 0.1, fiber: 2.4, sugar: 9 },
@@ -70,6 +71,67 @@ const nutritionDatabase: Record<string, FoodItem["nutrition"]> = {
   vegetables: { calories: 25, protein: 2, carbs: 5, fat: 0.2, fiber: 2.5, sugar: 2 },
   fruit: { calories: 50, protein: 0.5, carbs: 13, fat: 0.2, fiber: 2, sugar: 10 },
   snack: { calories: 450, protein: 6, carbs: 55, fat: 22, fiber: 2, sugar: 15 },
+  
+  // Supplements - Protein Powders (per scoop/serving ~30g)
+  whey: { calories: 120, protein: 24, carbs: 3, fat: 1.5, fiber: 0, sugar: 1 },
+  "whey protein": { calories: 120, protein: 24, carbs: 3, fat: 1.5, fiber: 0, sugar: 1 },
+  "protein powder": { calories: 120, protein: 24, carbs: 3, fat: 1.5, fiber: 0, sugar: 1 },
+  casein: { calories: 120, protein: 24, carbs: 3, fat: 1, fiber: 0, sugar: 1 },
+  "plant protein": { calories: 110, protein: 20, carbs: 4, fat: 2, fiber: 2, sugar: 1 },
+  "pea protein": { calories: 100, protein: 21, carbs: 2, fat: 1.5, fiber: 1, sugar: 0 },
+  "soy protein": { calories: 95, protein: 23, carbs: 2, fat: 1, fiber: 1, sugar: 0 },
+  collagen: { calories: 35, protein: 9, carbs: 0, fat: 0, fiber: 0, sugar: 0 },
+  
+  // Supplements - Pre/Post Workout
+  "pre workout": { calories: 10, protein: 0, carbs: 2, fat: 0, fiber: 0, sugar: 0 },
+  "pre-workout": { calories: 10, protein: 0, carbs: 2, fat: 0, fiber: 0, sugar: 0 },
+  creatine: { calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0, sugar: 0 },
+  bcaa: { calories: 5, protein: 0, carbs: 1, fat: 0, fiber: 0, sugar: 0 },
+  "amino acids": { calories: 5, protein: 0, carbs: 1, fat: 0, fiber: 0, sugar: 0 },
+  glutamine: { calories: 5, protein: 0, carbs: 0, fat: 0, fiber: 0, sugar: 0 },
+  "mass gainer": { calories: 650, protein: 50, carbs: 85, fat: 8, fiber: 3, sugar: 15 },
+  
+  // Supplements - Vitamins & Minerals (per tablet/capsule)
+  multivitamin: { calories: 5, protein: 0, carbs: 1, fat: 0, fiber: 0, sugar: 0 },
+  "vitamin c": { calories: 5, protein: 0, carbs: 1, fat: 0, fiber: 0, sugar: 0 },
+  "vitamin d": { calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0, sugar: 0 },
+  "vitamin b": { calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0, sugar: 0 },
+  "vitamin b12": { calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0, sugar: 0 },
+  "vitamin e": { calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0, sugar: 0 },
+  zinc: { calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0, sugar: 0 },
+  magnesium: { calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0, sugar: 0 },
+  calcium: { calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0, sugar: 0 },
+  iron: { calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0, sugar: 0 },
+  
+  // Supplements - Health & Wellness
+  "fish oil": { calories: 25, protein: 0, carbs: 0, fat: 2.5, fiber: 0, sugar: 0 },
+  "omega 3": { calories: 25, protein: 0, carbs: 0, fat: 2.5, fiber: 0, sugar: 0 },
+  "omega-3": { calories: 25, protein: 0, carbs: 0, fat: 2.5, fiber: 0, sugar: 0 },
+  probiotic: { calories: 5, protein: 0, carbs: 1, fat: 0, fiber: 0, sugar: 0 },
+  melatonin: { calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0, sugar: 0 },
+  ashwagandha: { calories: 5, protein: 0, carbs: 1, fat: 0, fiber: 0, sugar: 0 },
+  turmeric: { calories: 5, protein: 0, carbs: 1, fat: 0, fiber: 0, sugar: 0 },
+  "green tea extract": { calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0, sugar: 0 },
+  "fat burner": { calories: 5, protein: 0, carbs: 1, fat: 0, fiber: 0, sugar: 0 },
+  
+  // Supplements - Energy & Performance
+  caffeine: { calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0, sugar: 0 },
+  "energy drink": { calories: 110, protein: 0, carbs: 28, fat: 0, fiber: 0, sugar: 27 },
+  electrolytes: { calories: 10, protein: 0, carbs: 2, fat: 0, fiber: 0, sugar: 1 },
+  
+  // Supplement brands (common ones)
+  optimum: { calories: 120, protein: 24, carbs: 3, fat: 1.5, fiber: 0, sugar: 1 },
+  "gold standard": { calories: 120, protein: 24, carbs: 3, fat: 1, fiber: 0, sugar: 1 },
+  myprotein: { calories: 100, protein: 21, carbs: 1, fat: 1.5, fiber: 0, sugar: 1 },
+  dymatize: { calories: 120, protein: 25, carbs: 2, fat: 1.5, fiber: 0, sugar: 1 },
+  muscletech: { calories: 130, protein: 25, carbs: 3, fat: 2, fiber: 0, sugar: 2 },
+  bsn: { calories: 200, protein: 46, carbs: 6, fat: 3, fiber: 0, sugar: 2 },
+  cellucor: { calories: 120, protein: 24, carbs: 3, fat: 1.5, fiber: 0, sugar: 1 },
+  gnc: { calories: 120, protein: 24, carbs: 3, fat: 1.5, fiber: 0, sugar: 1 },
+  centrum: { calories: 5, protein: 0, carbs: 1, fat: 0, fiber: 0, sugar: 0 },
+  "nature made": { calories: 5, protein: 0, carbs: 1, fat: 0, fiber: 0, sugar: 0 },
+  "garden of life": { calories: 5, protein: 0, carbs: 1, fat: 0, fiber: 0, sugar: 0 },
+  
   default: { calories: 150, protein: 5, carbs: 20, fat: 5, fiber: 2, sugar: 5 },
 };
 
@@ -138,6 +200,13 @@ server.tool(
     }),
   },
   async ({ imageBase64 }) => {
+    if (!process.env.OPENAI_API_KEY) {
+      return text(JSON.stringify({
+        success: false,
+        message: "OpenAI API key not configured. Create a .env file with OPENAI_API_KEY=your_key"
+      }));
+    }
+
     const openai = new OpenAI({
       apiKey: process.env.OPENAI_API_KEY,
     });
@@ -151,10 +220,20 @@ server.tool(
             content: [
               {
                 type: "text",
-                text: `Analyze this food image and respond with ONLY a JSON object in this exact format, no other text:
-{"name": "food name", "category": "one of: fruit, vegetable, protein, dairy, grain, snack, beverage, dessert, meal"}
+                text: `Analyze this image and identify the food item OR supplement/health product.
 
-Be specific about the food item. If you see multiple items, identify the main one.`,
+Respond with ONLY a JSON object in this exact format, no other text:
+{"name": "product name", "category": "category"}
+
+Categories:
+- For food: fruit, vegetable, protein, dairy, grain, snack, beverage, dessert, meal
+- For supplements: supplement
+
+For supplements, be specific with the name (e.g., "Whey Protein Powder", "Vitamin D3", "Fish Oil Capsules", "Creatine Monohydrate", "BCAA", "Pre-Workout", "Multivitamin").
+
+If you recognize a brand (like Optimum Nutrition, MyProtein, Centrum, GNC, etc.), include it in the name.
+
+Be specific about the item. If you see multiple items, identify the main one.`,
               },
               {
                 type: "image_url",
@@ -207,10 +286,10 @@ Be specific about the food item. If you see multiple items, identify the main on
 server.tool(
   {
     name: "add_food_manually",
-    description: "Manually add a food item to your session if the camera recognition doesn't work.",
+    description: "Manually add a food item or supplement to your session if the camera recognition doesn't work.",
     schema: z.object({
-      name: z.string().describe("Name of the food item"),
-      category: z.enum(["fruit", "vegetable", "protein", "dairy", "grain", "snack", "beverage", "dessert", "meal"]).describe("Category of the food"),
+      name: z.string().describe("Name of the food item or supplement"),
+      category: z.enum(["fruit", "vegetable", "protein", "dairy", "grain", "snack", "beverage", "dessert", "meal", "supplement"]).describe("Category of the item"),
     }),
   },
   async ({ name, category }) => {

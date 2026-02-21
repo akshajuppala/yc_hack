@@ -32,6 +32,7 @@ const categoryColors: Record<string, string> = {
   beverage: "bg-cyan-500",
   dessert: "bg-pink-500",
   meal: "bg-indigo-500",
+  supplement: "bg-emerald-600",
 };
 
 const categoryIcons: Record<string, string> = {
@@ -44,6 +45,7 @@ const categoryIcons: Record<string, string> = {
   beverage: "🥤",
   dessert: "🍰",
   meal: "🍽️",
+  supplement: "💊",
 };
 
 interface NutritionBarProps {
