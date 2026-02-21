@@ -14,8 +14,9 @@ function load<T>(fileName: string): T {
 }
 
 const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:8000";
-const WORKOS_API_KEY = process.env.WORKOS_API_KEY;
-const WORKOS_CLIENT_ID = process.env.WORKOS_CLIENT_ID;
+const WORKOS_API_KEY = process.env.WORKOS_API_KEY || "sk_test_a2V5XzAxS0oxM1c2MlhEQ0M1MTY0SkFCNFlYUzRRLHREY05CV1ZiendWSjlzbklBYm93em9mT1o";
+const WORKOS_CLIENT_ID = process.env.WORKOS_CLIENT_ID || "client_01KJ13W6NAEF3WQK8TSER70QBG";
+const WORKOS_SUBDOMAIN = process.env.MCP_USE_OAUTH_WORKOS_SUBDOMAIN || "inspired-muffin-37-staging.authkit.app";
 
 async function callBackend(endpoint: string, options?: RequestInit) {
   try {
@@ -41,12 +42,12 @@ const server = new MCPServer({
     { src: "icon.svg", mimeType: "image/svg+xml", sizes: ["512x512"] },
   ],
   // WorkOS OAuth — protects all /mcp routes, requires login via AuthKit
-  ...(process.env.MCP_USE_OAUTH_WORKOS_SUBDOMAIN
+  ...(WORKOS_SUBDOMAIN
     ? {
         oauth: oauthWorkOSProvider({
-          subdomain: process.env.MCP_USE_OAUTH_WORKOS_SUBDOMAIN,
-          clientId: process.env.WORKOS_CLIENT_ID,
-          apiKey: process.env.WORKOS_API_KEY,
+          subdomain: WORKOS_SUBDOMAIN,
+          clientId: WORKOS_CLIENT_ID,
+          apiKey: WORKOS_API_KEY,
         }),
       }
     : {}),
@@ -333,7 +334,7 @@ server.tool(
       if (!WORKOS_CLIENT_ID) {
         return error("WORKOS_CLIENT_ID not configured in .env");
       }
-      const subdomain = process.env.MCP_USE_OAUTH_WORKOS_SUBDOMAIN ?? "inspired-muffin-37-staging.authkit.app";
+      const subdomain = WORKOS_SUBDOMAIN;
       const loginUrl = `https://${subdomain}/authorize?client_id=${WORKOS_CLIENT_ID}&response_type=code&redirect_uri=${encodeURIComponent("http://localhost:3000/oauth/callback")}`;
       return object({
         login_url: loginUrl,
