@@ -6,7 +6,7 @@ import cv2
 
 sys.path.insert(0, os.path.dirname(__file__))
 
-from agent import AgentState, ActionProgress, interpret_image, interpret_video
+from backend.agent import AgentState, ActionProgress, interpret_image, interpret_video
 
 TEST_DIR = os.path.join(os.path.dirname(__file__), "test_data")
 VIDEO_FILE = "WIN_20260221_12_20_56_Pro.mp4"

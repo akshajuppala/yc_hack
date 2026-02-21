@@ -4,7 +4,7 @@ import json
 import os
 import random
 
-from agent import AgentState, interpret_image, interpret_video
+from backend.agent import AgentState, interpret_image, interpret_video
 
 load_dotenv()
 

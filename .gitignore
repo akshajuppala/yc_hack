@@ -1,6 +1,32 @@
-test_data
+backend/test_data
+backend/.env
+backend/__pycache__
+backend/.pytest_cache
+backend/venv
+backend/.venv
+# Dependencies
+node_modules/
+
+# Environment files
 .env
-__pycache__
-.pytest_cache
-venv
-.venv
+.env.local
+.env.*.local
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Build output
+dist/
+build/
