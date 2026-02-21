@@ -1,0 +1,780 @@
+@import "tailwindcss";
+@import "@openai/apps-sdk-ui/css";
+
+@source "../node_modules/@openai/apps-sdk-ui";
+@source "./**/*.{ts,tsx,js,jsx,html}";
+
+@theme {
+  --color-scheme: light dark;
+}
+
+@variant dark (&:where(.dark, .dark *));
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   BLUEPRINT HEALTH OPTIMIZER — Dark Theme
+   Bryan Johnson / Don't Die aesthetic
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Root container ─────────────────────────────────────────────────────── */
+.bp-root {
+  background: #0a0a12;
+  color: #e0e0f0;
+  border-radius: 24px;
+  overflow: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter",
+    "Segoe UI", sans-serif;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 360px;
+}
+
+/* ── Header ─────────────────────────────────────────────────────────────── */
+.bp-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.bp-header-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.bp-header-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.bp-title {
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: 4px;
+  color: #ffffff;
+  margin: 0;
+  line-height: 1;
+}
+
+.bp-subtitle {
+  font-size: 12px;
+  color: #666;
+  margin: 4px 0 0;
+  letter-spacing: 1px;
+}
+
+.bp-clock {
+  font-size: 11px;
+  color: #444;
+  margin: 2px 0 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.bp-live-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: #ff4466;
+  background: rgba(255, 68, 102, 0.1);
+  padding: 4px 10px;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 68, 102, 0.25);
+}
+
+.bp-view-badge {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 2px;
+  color: #00ccff;
+  background: rgba(0, 204, 255, 0.08);
+  padding: 3px 10px;
+  border-radius: 20px;
+  border: 1px solid rgba(0, 204, 255, 0.2);
+}
+
+/* ── Recording dot ──────────────────────────────────────────────────────── */
+.rec-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ff4466;
+  animation: rec-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes rec-pulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(255, 68, 102, 0.6); }
+  50%      { opacity: 0.4; box-shadow: 0 0 8px 4px rgba(255, 68, 102, 0); }
+}
+
+/* ── Quick Stats Row ────────────────────────────────────────────────────── */
+.bp-stats-row {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 10px;
+}
+
+.bp-stat {
+  background: #10101a;
+  border: 1px solid #1a1a2e;
+  border-radius: 14px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.bp-stat-label {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 1.5px;
+  color: #555;
+}
+
+.bp-stat-value {
+  font-size: 20px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.bp-stat-value small {
+  font-size: 11px;
+  font-weight: 500;
+  opacity: 0.6;
+}
+
+/* ── Card ───────────────────────────────────────────────────────────────── */
+.bp-card {
+  background: #10101a;
+  border: 1px solid #1a1a2e;
+  border-radius: 18px;
+  padding: 16px;
+}
+
+/* ── Split layout ───────────────────────────────────────────────────────── */
+.bp-split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.bp-split-cell {
+  min-height: 260px;
+  overflow: hidden;
+}
+
+@media (max-width: 600px) {
+  .bp-split { grid-template-columns: 1fr; }
+  .bp-stats-row { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* ── Vitals Chart ───────────────────────────────────────────────────────── */
+.vitals-chart-wrapper {
+  display: flex;
+  flex-direction: column;
+}
+
+.chart-label {
+  display: block;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+}
+
+.chart-value {
+  display: block;
+  font-size: 22px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+
+.chart-value small {
+  font-size: 11px;
+  font-weight: 500;
+  opacity: 0.5;
+}
+
+.chart-time {
+  font-size: 11px;
+  color: #444;
+  font-variant-numeric: tabular-nums;
+  align-self: flex-end;
+}
+
+/* pulsing dot on chart tip */
+.pulse-dot {
+  animation: chart-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes chart-pulse {
+  0%, 100% { r: 5; opacity: 0.5; }
+  50%      { r: 9; opacity: 0.15; }
+}
+
+/* ── Camera Feed ────────────────────────────────────────────────────────── */
+.camera-feed {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.camera-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.camera-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: #888;
+}
+
+.camera-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  color: #ff4466;
+}
+
+.camera-events {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 200px;
+}
+
+.camera-event {
+  background: #0e0e18;
+  border: 1px solid #1a1a2e;
+  border-left: 3px solid var(--accent, #555);
+  border-radius: 10px;
+  padding: 8px 10px;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  position: relative;
+  animation: event-slide-in 0.4s ease-out;
+}
+
+.camera-event-new {
+  box-shadow: 0 0 16px -4px var(--accent);
+}
+
+@keyframes event-slide-in {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.camera-event-icon {
+  font-size: 16px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.camera-event-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.camera-event-row {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.camera-event-item {
+  font-size: 12px;
+  font-weight: 600;
+  color: #ddd;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.camera-event-dose {
+  font-size: 10px;
+  color: #666;
+  white-space: nowrap;
+}
+
+.camera-event-meta {
+  display: flex;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.camera-event-time {
+  font-size: 10px;
+  color: #555;
+  font-variant-numeric: tabular-nums;
+}
+
+.camera-event-confidence {
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.camera-conf-bar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: #1a1a2e;
+  border-radius: 0 0 10px 10px;
+  overflow: hidden;
+}
+
+.camera-conf-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.6s ease;
+}
+
+/* ── Protocol List ──────────────────────────────────────────────────────── */
+.protocol-list {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.protocol-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.protocol-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: #888;
+}
+
+.protocol-score {
+  font-size: 12px;
+  font-weight: 700;
+  color: #00ff88;
+  font-variant-numeric: tabular-nums;
+}
+
+.protocol-items {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 200px;
+}
+
+.protocol-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 10px;
+  background: #0e0e18;
+  border: 1px solid #1a1a2e;
+  animation: event-slide-in 0.35s ease-out;
+}
+
+.protocol-item-new {
+  box-shadow: 0 0 12px -4px #00ff8844;
+}
+
+.protocol-icon {
+  font-size: 14px;
+  width: 20px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.protocol-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.protocol-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: #ddd;
+}
+
+.protocol-detail {
+  font-size: 10px;
+  color: #555;
+  margin-top: 1px;
+}
+
+.protocol-time {
+  color: #666;
+}
+
+.protocol-source {
+  color: #777;
+}
+
+.protocol-note {
+  font-size: 9px;
+  color: #444;
+  font-style: italic;
+  margin-top: 2px;
+}
+
+.protocol-badge {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+
+/* ── Score Ring ──────────────────────────────────────────────────────────── */
+.score-ring {
+  filter: drop-shadow(0 0 6px rgba(0, 255, 136, 0.3));
+}
+
+/* ── Footer ─────────────────────────────────────────────────────────────── */
+.bp-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 12px;
+  border-top: 1px solid #1a1a2e;
+}
+
+.bp-footer-mfg {
+  font-size: 10px;
+  color: #444;
+  letter-spacing: 0.5px;
+}
+
+.bp-footer-btn {
+  font-size: 11px;
+  font-weight: 600;
+  color: #00ccff;
+  background: rgba(0, 204, 255, 0.08);
+  border: 1px solid rgba(0, 204, 255, 0.2);
+  border-radius: 12px;
+  padding: 6px 14px;
+  cursor: pointer;
+  transition: background 0.2s, box-shadow 0.2s;
+}
+
+.bp-footer-btn:hover {
+  background: rgba(0, 204, 255, 0.15);
+  box-shadow: 0 0 12px rgba(0, 204, 255, 0.15);
+}
+
+/* ── Skeleton placeholder ───────────────────────────────────────────────── */
+.bp-skel {
+  background: linear-gradient(110deg, #12121a 25%, #1a1a2e 50%, #12121a 75%);
+  background-size: 200% 100%;
+  animation: skel-shimmer 1.5s ease-in-out infinite;
+  border-radius: 12px;
+}
+
+@keyframes skel-shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   WEBCAM FEED
+   ═══════════════════════════════════════════════════════════════════════════ */
+.webcam-feed {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.webcam-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.webcam-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: #888;
+}
+
+.webcam-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  color: #00ff88;
+}
+
+.webcam-viewport {
+  position: relative;
+  flex: 1;
+  min-height: 200px;
+  border-radius: 14px;
+  overflow: hidden;
+  background: #080810;
+  border: 1px solid #1a1a2e;
+}
+
+.webcam-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  border-radius: 14px;
+}
+
+/* scan-line overlay for futuristic look */
+.webcam-scanline {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 3px,
+    rgba(0, 255, 136, 0.015) 3px,
+    rgba(0, 255, 136, 0.015) 4px
+  );
+  z-index: 2;
+}
+
+/* corner brackets */
+.webcam-bracket {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  z-index: 3;
+  pointer-events: none;
+}
+
+.webcam-bracket-tl {
+  top: 8px; left: 8px;
+  border-top: 2px solid #00ff88;
+  border-left: 2px solid #00ff88;
+}
+
+.webcam-bracket-tr {
+  top: 8px; right: 8px;
+  border-top: 2px solid #00ff88;
+  border-right: 2px solid #00ff88;
+}
+
+.webcam-bracket-bl {
+  bottom: 8px; left: 8px;
+  border-bottom: 2px solid #00ff88;
+  border-left: 2px solid #00ff88;
+}
+
+.webcam-bracket-br {
+  bottom: 8px; right: 8px;
+  border-bottom: 2px solid #00ff88;
+  border-right: 2px solid #00ff88;
+}
+
+/* placeholder states */
+.webcam-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  min-height: 200px;
+  gap: 8px;
+  color: #555;
+  font-size: 12px;
+}
+
+.webcam-icon-large {
+  font-size: 36px;
+  opacity: 0.4;
+}
+
+.webcam-hint {
+  font-size: 10px;
+  color: #444;
+}
+
+.webcam-spinner {
+  width: 28px;
+  height: 28px;
+  border: 3px solid #1a1a2e;
+  border-top-color: #00ff88;
+  border-radius: 50%;
+  animation: webcam-spin 0.8s linear infinite;
+}
+
+@keyframes webcam-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CALORIES TRACKER
+   ═══════════════════════════════════════════════════════════════════════════ */
+.cal-tracker {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.cal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.cal-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: #888;
+}
+
+.cal-count {
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.cal-top {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.cal-ring {
+  flex-shrink: 0;
+  filter: drop-shadow(0 0 4px rgba(0, 255, 136, 0.2));
+}
+
+.cal-macros {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cal-macro-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.cal-macro-label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: 60px;
+  font-size: 10px;
+  color: #777;
+  text-transform: capitalize;
+}
+
+.cal-macro-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.cal-macro-bar-bg {
+  flex: 1;
+  height: 5px;
+  background: #1a1a2e;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.cal-macro-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.6s ease;
+}
+
+.cal-macro-num {
+  font-size: 9px;
+  color: #555;
+  font-variant-numeric: tabular-nums;
+  width: 52px;
+  text-align: right;
+}
+
+.cal-meals {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  overflow-y: auto;
+}
+
+.cal-meal {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 10px;
+  background: #0e0e18;
+  border: 1px solid #1a1a2e;
+  animation: event-slide-in 0.35s ease-out;
+}
+
+.cal-meal-pending {
+  opacity: 0.5;
+}
+
+.cal-meal-icon {
+  font-size: 13px;
+  width: 20px;
+  text-align: center;
+  flex-shrink: 0;
+  color: #00ff88;
+}
+
+.cal-meal-pending .cal-meal-icon {
+  color: #555;
+}
+
+.cal-meal-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.cal-meal-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: #ddd;
+}
+
+.cal-meal-meta {
+  font-size: 10px;
+  color: #555;
+  margin-top: 1px;
+}
+
+/* ── Global resets (safe) ───────────────────────────────────────────────── */
+body { margin: 0; }

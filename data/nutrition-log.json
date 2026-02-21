@@ -1,0 +1,42 @@
+{
+  "date": "2026-02-21",
+  "targetCalories": 1977,
+  "targetMacros": {
+    "protein": { "target": 130, "unit": "g" },
+    "fat":     { "target": 110, "unit": "g" },
+    "carbs":   { "target": 120, "unit": "g" },
+    "fiber":   { "target": 50,  "unit": "g" }
+  },
+  "meals": [
+    {
+      "id": 1,
+      "name": "Super Veggie Smoothie",
+      "time": "06:45",
+      "timestamp": "2026-02-21T06:45:00Z",
+      "calories": 400,
+      "macros": { "protein": 30, "fat": 20, "carbs": 35, "fiber": 12 },
+      "status": "consumed",
+      "detectedBy": "camera"
+    },
+    {
+      "id": 2,
+      "name": "Nutty Pudding (Blueprint)",
+      "time": "12:00",
+      "timestamp": "2026-02-21T12:00:00Z",
+      "calories": 600,
+      "macros": { "protein": 45, "fat": 40, "carbs": 30, "fiber": 15 },
+      "status": "consumed",
+      "detectedBy": "camera"
+    },
+    {
+      "id": 3,
+      "name": "Super Veggie Bowl",
+      "time": "18:30",
+      "timestamp": "2026-02-21T18:30:00Z",
+      "calories": 977,
+      "macros": { "protein": 55, "fat": 50, "carbs": 55, "fiber": 23 },
+      "status": "scheduled",
+      "detectedBy": null
+    }
+  ]
+}

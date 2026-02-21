@@ -1,0 +1,149 @@
+{
+  "source": "smart_glasses_camera",
+  "date": "2026-02-21",
+  "events": [
+    {
+      "id": 1,
+      "timestamp": "2026-02-21T06:05:30Z",
+      "type": "activity",
+      "item": "Woke up — morning light exposure",
+      "confidence": 0.91,
+      "status": "confirmed",
+      "icon": "sunrise"
+    },
+    {
+      "id": 2,
+      "timestamp": "2026-02-21T06:15:22Z",
+      "type": "activity",
+      "item": "Red light therapy session started",
+      "confidence": 0.88,
+      "status": "confirmed",
+      "icon": "light"
+    },
+    {
+      "id": 3,
+      "timestamp": "2026-02-21T06:31:42Z",
+      "type": "supplement",
+      "item": "Vitamin D3 + K2",
+      "dose": "4000 IU + 100 mcg",
+      "confidence": 0.96,
+      "status": "confirmed",
+      "icon": "pill"
+    },
+    {
+      "id": 4,
+      "timestamp": "2026-02-21T06:32:15Z",
+      "type": "supplement",
+      "item": "Omega-3 Fish Oil",
+      "dose": "2g (2 capsules)",
+      "confidence": 0.94,
+      "status": "confirmed",
+      "icon": "pill"
+    },
+    {
+      "id": 5,
+      "timestamp": "2026-02-21T06:33:08Z",
+      "type": "supplement",
+      "item": "Creatine Monohydrate",
+      "dose": "5g powder",
+      "confidence": 0.89,
+      "status": "confirmed",
+      "icon": "powder"
+    },
+    {
+      "id": 6,
+      "timestamp": "2026-02-21T06:34:00Z",
+      "type": "supplement",
+      "item": "Collagen Peptides",
+      "dose": "15g powder",
+      "confidence": 0.92,
+      "status": "confirmed",
+      "icon": "powder"
+    },
+    {
+      "id": 7,
+      "timestamp": "2026-02-21T06:45:30Z",
+      "type": "meal",
+      "item": "Super Veggie Smoothie (Blueprint)",
+      "confidence": 0.91,
+      "status": "confirmed",
+      "icon": "smoothie"
+    },
+    {
+      "id": 8,
+      "timestamp": "2026-02-21T07:02:00Z",
+      "type": "activity",
+      "item": "Morning workout — Zone 2 cardio",
+      "confidence": 0.87,
+      "status": "confirmed",
+      "icon": "workout"
+    },
+    {
+      "id": 9,
+      "timestamp": "2026-02-21T07:32:00Z",
+      "type": "activity",
+      "item": "Workout completed — 30 min",
+      "confidence": 0.93,
+      "status": "confirmed",
+      "icon": "checkmark"
+    },
+    {
+      "id": 10,
+      "timestamp": "2026-02-21T07:35:20Z",
+      "type": "supplement",
+      "item": "Whey Protein Isolate",
+      "dose": "30g",
+      "confidence": 0.90,
+      "status": "confirmed",
+      "icon": "shake"
+    },
+    {
+      "id": 11,
+      "timestamp": "2026-02-21T12:00:45Z",
+      "type": "meal",
+      "item": "Nutty Pudding (Blueprint recipe)",
+      "confidence": 0.88,
+      "status": "confirmed",
+      "icon": "meal"
+    },
+    {
+      "id": 12,
+      "timestamp": "2026-02-21T12:05:10Z",
+      "type": "supplement",
+      "item": "NR (Nicotinamide Riboside)",
+      "dose": "300 mg",
+      "confidence": 0.91,
+      "status": "confirmed",
+      "icon": "pill"
+    },
+    {
+      "id": 13,
+      "timestamp": "2026-02-21T18:30:00Z",
+      "type": "meal",
+      "item": "Final meal — Super Veggie bowl",
+      "confidence": 0.0,
+      "status": "scheduled",
+      "icon": "meal"
+    },
+    {
+      "id": 14,
+      "timestamp": "2026-02-21T21:00:00Z",
+      "type": "supplement",
+      "item": "Magnesium Glycinate",
+      "dose": "400 mg",
+      "confidence": 0.0,
+      "status": "scheduled",
+      "icon": "pill"
+    },
+    {
+      "id": 15,
+      "timestamp": "2026-02-21T21:05:00Z",
+      "type": "supplement",
+      "item": "Melatonin (micro-dose)",
+      "dose": "300 mcg",
+      "confidence": 0.0,
+      "status": "scheduled",
+      "icon": "pill"
+    }
+  ]
+}
