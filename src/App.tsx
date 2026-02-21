@@ -14,7 +14,6 @@ interface CameraEvent {
   timestamp: string;
   type: string;
   item: string;
-  dose?: string;
   confidence: number;
   status: string;
   icon: string;
@@ -22,29 +21,54 @@ interface CameraEvent {
 
 interface AnalysisResult {
   status: string;
-  action?: string;
-  category?: string;
-  item_name?: string;
-  details?: {
-    quantity?: string;
-    dosage?: string;
-    brand?: string;
-  };
+  title?: string;
   description: string;
+  action_type?: string;
+  macros?: {
+    calories?: number;
+    protein_g?: number;
+    carbs_g?: number;
+    fat_g?: number;
+  };
+}
+
+interface Macros {
+  calories: number;
+  protein_g: number;
+  carbs_g: number;
+  fat_g: number;
+  fiber_g: number;
+  sugar_g: number;
+  water_ml: number;
 }
 
 interface ProtocolItem {
   id: string;
-  name: string;
-  category: string;
+  action_type: string;
+  title: string;
+  description: string;
+  timestamp: string;
+  macros: Macros;
+  micros: Record<string, string>;
   status: string;
-  taken_at: string | null;
-  details: Record<string, unknown>;
+}
+
+interface NutritionTotals {
+  calories_consumed: number;
+  calories_burned: number;
+  protein_g: number;
+  carbs_g: number;
+  fat_g: number;
+  fiber_g: number;
+  sugar_g: number;
+  water_ml: number;
 }
 
 interface Protocol {
   total_actions: number;
-  by_category: Record<string, string[]>;
+  totals: NutritionTotals;
+  net_calories: number;
+  supplements_taken: string[];
   items: ProtocolItem[];
 }
 
@@ -55,23 +79,21 @@ interface WatchData {
   body_temperature_f: number;
   calories_burned: number;
   steps_today: number;
-  stress_level: string;
 }
 
-// Category icons and colors
-const categoryConfig: Record<string, { icon: string; color: string }> = {
-  supplement: { icon: "💊", color: "#00ff88" },
-  meal: { icon: "🍎", color: "#ffaa00" },
-  hydration: { icon: "💧", color: "#00ccff" },
-  exercise: { icon: "🏃", color: "#ff6b6b" },
-  wellness: { icon: "🧘", color: "#a78bfa" },
+// Action type icons
+const actionIcons: Record<string, string> = {
+  food: "🍎",
+  supplement: "💊",
+  hydration: "💧",
+  exercise: "🏃",
 };
 
 // ── Score Ring ───────────────────────────────────────────────────────────────
 const ScoreRing: React.FC<{ score: number; total: number }> = ({ score, total }) => {
   const r = 38;
   const circ = 2 * Math.PI * r;
-  const pct = total > 0 ? (score / total) * 100 : 0;
+  const pct = total > 0 ? Math.min((score / total) * 100, 100) : 0;
   const offset = circ - (pct / 100) * circ;
   const color = pct >= 80 ? "#00ff88" : pct >= 50 ? "#ffaa00" : "#ff4466";
   return (
@@ -107,19 +129,85 @@ const Stat: React.FC<{ label: string; value: string | number; unit: string; colo
   </div>
 );
 
-// ── Dynamic Protocol List ────────────────────────────────────────────────────
-const DynamicProtocolList: React.FC<{ protocol: Protocol }> = ({ protocol }) => {
+// ── Macro Bar ────────────────────────────────────────────────────────────────
+const MacroBar: React.FC<{ label: string; value: number; max: number; color: string; unit: string }> = ({
+  label, value, max, color, unit
+}) => {
+  const pct = max > 0 ? Math.min((value / max) * 100, 100) : 0;
+  return (
+    <div className="macro-bar">
+      <div className="macro-bar-header">
+        <span className="macro-bar-label">{label}</span>
+        <span className="macro-bar-value" style={{ color }}>{value.toFixed(1)}{unit}</span>
+      </div>
+      <div className="macro-bar-track">
+        <div className="macro-bar-fill" style={{ width: `${pct}%`, background: color }} />
+      </div>
+    </div>
+  );
+};
+
+// ── Nutrition Dashboard ──────────────────────────────────────────────────────
+const NutritionDashboard: React.FC<{ totals: NutritionTotals; netCalories: number }> = ({ totals, netCalories }) => {
+  return (
+    <div className="nutrition-dashboard">
+      <div className="nutrition-header">
+        <span className="nutrition-title">📊 NUTRITION TRACKER</span>
+      </div>
+      
+      {/* Calorie Ring */}
+      <div className="calorie-ring-container">
+        <div className="calorie-ring">
+          <div className="calorie-ring-inner">
+            <span className="calorie-ring-value">{netCalories}</span>
+            <span className="calorie-ring-label">net kcal</span>
+          </div>
+        </div>
+        <div className="calorie-breakdown">
+          <div className="calorie-row consumed">
+            <span>🍎 Consumed</span>
+            <span>+{totals.calories_consumed} kcal</span>
+          </div>
+          <div className="calorie-row burned">
+            <span>🔥 Burned</span>
+            <span>-{totals.calories_burned} kcal</span>
+          </div>
+        </div>
+      </div>
+      
+      {/* Macro Bars */}
+      <div className="macro-bars">
+        <MacroBar label="Protein" value={totals.protein_g} max={150} color="#00ff88" unit="g" />
+        <MacroBar label="Carbs" value={totals.carbs_g} max={300} color="#ffaa00" unit="g" />
+        <MacroBar label="Fat" value={totals.fat_g} max={80} color="#ff6b6b" unit="g" />
+        <MacroBar label="Fiber" value={totals.fiber_g} max={30} color="#a78bfa" unit="g" />
+      </div>
+      
+      {/* Hydration */}
+      {totals.water_ml > 0 && (
+        <div className="hydration-tracker">
+          <span className="hydration-icon">💧</span>
+          <span className="hydration-value">{totals.water_ml} ml</span>
+          <span className="hydration-label">hydration</span>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ── Protocol List with Nutrition ─────────────────────────────────────────────
+const ProtocolList: React.FC<{ protocol: Protocol }> = ({ protocol }) => {
   if (protocol.items.length === 0) {
     return (
       <div className="protocol-list">
         <div className="protocol-header">
-          <span className="protocol-title">📋 TODAY'S PROTOCOL</span>
+          <span className="protocol-title">📋 HEALTH LOG</span>
           <span className="protocol-count">0 actions</span>
         </div>
         <div className="protocol-empty">
           <span className="protocol-empty-icon">👁️</span>
-          <span className="protocol-empty-text">No actions recorded yet</span>
-          <span className="protocol-empty-hint">Actions will appear here as they're detected</span>
+          <span className="protocol-empty-text">No health actions yet</span>
+          <span className="protocol-empty-hint">Take supplements, eat food, drink water, or exercise</span>
         </div>
       </div>
     );
@@ -128,25 +216,42 @@ const DynamicProtocolList: React.FC<{ protocol: Protocol }> = ({ protocol }) => 
   return (
     <div className="protocol-list">
       <div className="protocol-header">
-        <span className="protocol-title">📋 TODAY'S PROTOCOL</span>
+        <span className="protocol-title">📋 HEALTH LOG</span>
         <span className="protocol-count">{protocol.total_actions} actions</span>
       </div>
+      
+      {/* Supplements Summary */}
+      {protocol.supplements_taken.length > 0 && (
+        <div className="supplements-summary">
+          <span className="supplements-icon">💊</span>
+          <span className="supplements-text">
+            {protocol.supplements_taken.join(", ")}
+          </span>
+        </div>
+      )}
+      
       <div className="protocol-items">
         {protocol.items.slice().reverse().map((item) => {
-          const config = categoryConfig[item.category] || categoryConfig.wellness;
-          const time = item.taken_at 
-            ? new Date(item.taken_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-            : "";
+          const time = new Date(item.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+          const icon = actionIcons[item.action_type] || "✅";
+          const cals = item.macros.calories;
+          const calText = cals !== 0 ? ` • ${cals > 0 ? "+" : ""}${cals} kcal` : "";
+          
+          // Build macro summary for food
+          let macroText = "";
+          if (item.action_type === "food" && item.macros.protein_g > 0) {
+            macroText = ` • P:${item.macros.protein_g.toFixed(0)}g C:${item.macros.carbs_g.toFixed(0)}g F:${item.macros.fat_g.toFixed(0)}g`;
+          }
+          
           return (
-            <div key={item.id} className="protocol-item protocol-item-taken">
-              <span className="protocol-item-icon">{config.icon}</span>
+            <div key={item.id} className={`protocol-item protocol-item-${item.action_type}`}>
+              <span className="protocol-item-icon">{icon}</span>
               <div className="protocol-item-body">
-                <span className="protocol-item-name">{item.name}</span>
+                <span className="protocol-item-name">{item.title}</span>
                 <span className="protocol-item-meta">
-                  {item.category} • {time}
+                  {time}{calText}{macroText}
                 </span>
               </div>
-              <span className="protocol-item-check" style={{ color: config.color }}>✓</span>
             </div>
           );
         })}
@@ -160,7 +265,22 @@ const App: React.FC = () => {
   const [now, setNow] = useState(new Date());
   const [detectedEvents, setDetectedEvents] = useState<CameraEvent[]>([]);
   const [eventIdCounter, setEventIdCounter] = useState(1);
-  const [protocol, setProtocol] = useState<Protocol>({ total_actions: 0, by_category: {}, items: [] });
+  const [protocol, setProtocol] = useState<Protocol>({ 
+    total_actions: 0, 
+    totals: {
+      calories_consumed: 0,
+      calories_burned: 0,
+      protein_g: 0,
+      carbs_g: 0,
+      fat_g: 0,
+      fiber_g: 0,
+      sugar_g: 0,
+      water_ml: 0,
+    },
+    net_calories: 0,
+    supplements_taken: [],
+    items: [] 
+  });
   const [watchData, setWatchData] = useState<WatchData | null>(null);
   const [vitalsHistory, setVitalsHistory] = useState<{ hr: number[]; hrv: number[] }>({ hr: [], hrv: [] });
 
@@ -170,7 +290,7 @@ const App: React.FC = () => {
     return () => clearInterval(id);
   }, []);
 
-  // Fetch watch data and build vitals history
+  // Fetch watch data
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -192,7 +312,7 @@ const App: React.FC = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // Fetch protocol periodically
+  // Fetch protocol
   useEffect(() => {
     const fetchProtocol = async () => {
       try {
@@ -210,31 +330,26 @@ const App: React.FC = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // Handle analysis results from webcam
+  // Handle analysis results
   const handleAnalysisUpdate = useCallback((result: AnalysisResult) => {
-    const category = result.category || "wellness";
-    const config = categoryConfig[category] || categoryConfig.wellness;
-    
-    const itemName = result.item_name || result.action || result.description.slice(0, 40);
+    const title = result.title || result.description.slice(0, 40);
+    const actionType = result.action_type || "food";
+    const icon = actionIcons[actionType] || "✅";
 
     const newEvent: CameraEvent = {
       id: eventIdCounter,
       timestamp: new Date().toISOString(),
-      type: category,
-      item: itemName,
-      dose: result.details?.dosage,
+      type: actionType,
+      item: title,
       confidence: 0.95,
       status: "confirmed",
-      icon: config.icon,
+      icon: icon,
     };
 
     console.log("Adding detection:", newEvent);
     setEventIdCounter((c) => c + 1);
     setDetectedEvents((prev) => [newEvent, ...prev].slice(0, 20));
   }, [eventIdCounter]);
-
-  // Calculate stats
-  const totalCalories = watchData?.calories_burned || 0;
 
   return (
     <div className="bp-root" style={{ maxWidth: 900, margin: "0 auto" }}>
@@ -263,8 +378,8 @@ const App: React.FC = () => {
         <Stat label="HEART RATE" value={watchData?.heart_rate_bpm || "--"} unit="bpm" color="#00ff88" />
         <Stat label="HRV" value={watchData?.hrv_ms || "--"} unit="ms" color="#00ccff" />
         <Stat label="SpO2" value={watchData?.blood_oxygen_spo2 || "--"} unit="%" color="#a78bfa" />
-        <Stat label="TEMP" value={watchData?.body_temperature_f || "--"} unit="°F" color="#f59e0b" />
-        <Stat label="CALORIES" value={totalCalories} unit="kcal" color="#ff6b6b" />
+        <Stat label="NET CAL" value={protocol.net_calories} unit="kcal" color="#ff6b6b" />
+        <Stat label="PROTEIN" value={protocol.totals.protein_g.toFixed(0)} unit="g" color="#00ff88" />
       </div>
 
       {/* ── Vitals Chart ──────────────────────────────── */}
@@ -279,7 +394,7 @@ const App: React.FC = () => {
         </div>
       )}
 
-      {/* ── Row 1: Webcam + Camera Events ─────────────── */}
+      {/* ── Row 1: Webcam + Detections ─────────────────── */}
       <div className="bp-split">
         <div className="bp-card bp-split-cell">
           <WebcamFeed onAnalysisUpdate={handleAnalysisUpdate} />
@@ -289,31 +404,15 @@ const App: React.FC = () => {
         </div>
       </div>
 
-      {/* ── Row 2: Protocol List ─────────────────────────────── */}
-      <div className="bp-card">
-        <DynamicProtocolList protocol={protocol} />
-      </div>
-
-      {/* ── Category Summary ────────────────────────────────── */}
-      {Object.keys(protocol.by_category).length > 0 && (
-        <div className="bp-card">
-          <div className="category-summary">
-            <span className="category-summary-title">📊 CATEGORY BREAKDOWN</span>
-            <div className="category-grid">
-              {Object.entries(protocol.by_category).map(([cat, items]) => {
-                const config = categoryConfig[cat] || categoryConfig.wellness;
-                return (
-                  <div key={cat} className="category-item">
-                    <span className="category-icon">{config.icon}</span>
-                    <span className="category-name">{cat}</span>
-                    <span className="category-count" style={{ color: config.color }}>{items.length}</span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+      {/* ── Row 2: Nutrition + Protocol ─────────────────── */}
+      <div className="bp-split">
+        <div className="bp-card bp-split-cell">
+          <NutritionDashboard totals={protocol.totals} netCalories={protocol.net_calories} />
         </div>
-      )}
+        <div className="bp-card bp-split-cell">
+          <ProtocolList protocol={protocol} />
+        </div>
+      </div>
 
       {/* ── Footer ────────────────────────────────────── */}
       <div className="bp-footer">

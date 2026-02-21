@@ -265,6 +265,48 @@
 .protocol-empty-text { font-size: 14px; font-weight: 600; color: #666; }
 .protocol-empty-hint { font-size: 11px; color: #444; text-align: center; }
 
+/* ── Nutrition Dashboard ───────────────────────────────────────────────── */
+.nutrition-dashboard { display: flex; flex-direction: column; gap: 16px; }
+.nutrition-header { display: flex; justify-content: space-between; align-items: center; }
+.nutrition-title { font-size: 11px; font-weight: 700; letter-spacing: 2px; color: #888; }
+
+/* Calorie Ring */
+.calorie-ring-container { display: flex; align-items: center; gap: 20px; }
+.calorie-ring { width: 100px; height: 100px; border-radius: 50%; background: conic-gradient(#00ff88 0deg, #00ff88 180deg, #1a1a2e 180deg, #1a1a2e 360deg); display: flex; align-items: center; justify-content: center; }
+.calorie-ring-inner { width: 80px; height: 80px; border-radius: 50%; background: #0a0a14; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.calorie-ring-value { font-size: 20px; font-weight: 700; color: #00ff88; }
+.calorie-ring-label { font-size: 9px; color: #666; text-transform: uppercase; letter-spacing: 1px; }
+.calorie-breakdown { flex: 1; display: flex; flex-direction: column; gap: 8px; }
+.calorie-row { display: flex; justify-content: space-between; font-size: 13px; padding: 8px 12px; background: #0e0e18; border-radius: 8px; }
+.calorie-row.consumed span:last-child { color: #ffaa00; font-weight: 600; }
+.calorie-row.burned span:last-child { color: #ff6b6b; font-weight: 600; }
+
+/* Macro Bars */
+.macro-bars { display: flex; flex-direction: column; gap: 10px; }
+.macro-bar { display: flex; flex-direction: column; gap: 4px; }
+.macro-bar-header { display: flex; justify-content: space-between; align-items: center; }
+.macro-bar-label { font-size: 11px; color: #888; font-weight: 600; }
+.macro-bar-value { font-size: 12px; font-weight: 700; }
+.macro-bar-track { height: 8px; background: #1a1a2e; border-radius: 4px; overflow: hidden; }
+.macro-bar-fill { height: 100%; border-radius: 4px; transition: width 0.5s ease; }
+
+/* Hydration */
+.hydration-tracker { display: flex; align-items: center; gap: 8px; padding: 10px 14px; background: #0e0e18; border-radius: 10px; border: 1px solid rgba(0, 204, 255, 0.2); }
+.hydration-icon { font-size: 20px; }
+.hydration-value { font-size: 16px; font-weight: 700; color: #00ccff; }
+.hydration-label { font-size: 11px; color: #666; }
+
+/* Supplements Summary */
+.supplements-summary { display: flex; align-items: center; gap: 8px; padding: 10px 14px; background: #0e0e18; border-radius: 10px; border: 1px solid rgba(167, 139, 250, 0.2); margin-bottom: 12px; }
+.supplements-icon { font-size: 18px; }
+.supplements-text { font-size: 12px; color: #a78bfa; font-weight: 500; }
+
+/* Protocol item types */
+.protocol-item-food { border-left: 3px solid #ffaa00; }
+.protocol-item-supplement { border-left: 3px solid #a78bfa; }
+.protocol-item-hydration { border-left: 3px solid #00ccff; }
+.protocol-item-exercise { border-left: 3px solid #ff6b6b; }
+
 /* ── Category Summary ──────────────────────────────────────────────────── */
 .category-summary { padding: 4px 0; }
 .category-summary-title { font-size: 11px; font-weight: 700; letter-spacing: 2px; color: #888; display: block; margin-bottom: 12px; }

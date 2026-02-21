@@ -1,9 +1,5 @@
 """
-REST API endpoints for the health optimizer frontend.
-
-- Dynamic protocol tracking (no test data)
-- Google Search enrichment for detected items
-- Frame buffering and action completion tracking
+REST API endpoints for the health optimizer with nutrition tracking.
 """
 
 import json
@@ -16,12 +12,9 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from agent import (
-    AgentState, ActionProgress, interpret_image, 
-    search_item_info, protocol_manager
-)
+from agent import AgentState, ActionProgress, interpret_image, protocol_manager
 
-app = FastAPI(title="Health Optimizer API", version="2.0.0")
+app = FastAPI(title="Health Optimizer API", version="3.0.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -41,20 +34,6 @@ MAX_BUFFER_FRAMES = 20
 
 class ImageAnalysisRequest(BaseModel):
     image_base64: str
-    enrich_with_search: bool = False  # Enable Google search for item info
-
-
-class SmartWatchData(BaseModel):
-    heart_rate_bpm: int
-    blood_oxygen_spo2: float
-    sleep_score: int
-    steps_today: int
-    calories_burned: int
-    stress_level: str
-    body_temperature_f: float
-    respiratory_rate: int
-    hrv_ms: int
-    active_minutes: int
 
 
 def generate_watch_data() -> dict:
@@ -75,7 +54,7 @@ def generate_watch_data() -> dict:
 
 @app.get("/")
 def root():
-    return {"status": "ok", "service": "Health Optimizer API v2"}
+    return {"status": "ok", "service": "Health Optimizer API v3 - Nutrition Tracking"}
 
 
 @app.get("/health")
@@ -98,24 +77,21 @@ def get_smart_watch_data(override: Optional[str] = None):
 
 @app.get("/api/protocol")
 def get_protocol():
-    """Get the current dynamic protocol state."""
+    """Get the current protocol with nutrition totals."""
     return protocol_manager.get_summary()
 
 
 @app.post("/api/analyze-frame")
 def analyze_frame(request: ImageAnalysisRequest):
     """
-    Analyze a camera frame for health-related actions.
-    Automatically detects actions and updates the protocol when completed.
+    Analyze a camera frame for health actions.
+    Returns nutrition data when action is completed.
     """
     global frame_buffer
     
     api_key = os.getenv("GOOGLE_API_KEY")
     if not api_key:
-        raise HTTPException(
-            status_code=500, 
-            detail="GOOGLE_API_KEY not configured"
-        )
+        raise HTTPException(status_code=500, detail="GOOGLE_API_KEY not configured")
     
     try:
         # Decode base64 image
@@ -139,7 +115,7 @@ def analyze_frame(request: ImageAnalysisRequest):
             parsed = {"status": "unknown", "description": result}
             status = "unknown"
         
-        # Buffer management based on action progress
+        # Buffer management
         if status in ["started", "in progress"]:
             frame_buffer.append(image_bytes)
             if len(frame_buffer) > MAX_BUFFER_FRAMES:
@@ -149,6 +125,7 @@ def analyze_frame(request: ImageAnalysisRequest):
                 "success": True,
                 "analysis": parsed,
                 "action_in_progress": True,
+                "action_completed": False,
                 "frames_buffered": len(frame_buffer),
                 "protocol": protocol_manager.get_summary(),
                 "agent_state": {
@@ -158,18 +135,7 @@ def analyze_frame(request: ImageAnalysisRequest):
             }
         
         elif status == "finished":
-            detected_action = parsed.get("action", "health action")
-            item_name = parsed.get("item_name", "")
-            category = parsed.get("category", "wellness")
             frames_analyzed = len(frame_buffer)
-            
-            # Optionally enrich with Google Search
-            search_info = None
-            if request.enrich_with_search and item_name:
-                print(f"Searching for info about: {item_name}")
-                search_info = search_item_info(item_name, category)
-            
-            # Clear buffer
             frame_buffer = []
             
             return {
@@ -177,11 +143,7 @@ def analyze_frame(request: ImageAnalysisRequest):
                 "analysis": parsed,
                 "action_in_progress": False,
                 "action_completed": True,
-                "detected_action": detected_action,
-                "item_name": item_name,
-                "category": category,
                 "frames_analyzed": frames_analyzed,
-                "search_info": search_info,
                 "protocol": protocol_manager.get_summary(),
                 "agent_state": {
                     "current_action": agent_state.current_action,
@@ -222,7 +184,7 @@ def get_agent_state():
 
 @app.post("/api/reset-agent")
 def reset_agent():
-    """Reset the agent state, clear memory, and reset protocol."""
+    """Reset the agent state and clear protocol."""
     global frame_buffer
     agent_state.clear_memory()
     agent_state.current_action = ""
@@ -230,19 +192,6 @@ def reset_agent():
     frame_buffer = []
     protocol_manager.clear()
     return {"status": "reset", "message": "Agent and protocol cleared"}
-
-
-@app.post("/api/search-item")
-def search_item(item_name: str, category: str = "supplement"):
-    """Search for health information about an item."""
-    if not item_name:
-        raise HTTPException(status_code=400, detail="item_name is required")
-    
-    info = search_item_info(item_name, category)
-    if not info:
-        raise HTTPException(status_code=404, detail=f"Could not find info for {item_name}")
-    
-    return info
 
 
 if __name__ == "__main__":

@@ -15,30 +15,61 @@ interface SmartWatchData {
 
 interface AnalysisResult {
   status: string;
+  action_type?: string;
+  title?: string;
   description: string;
+  macros?: {
+    calories?: number;
+    protein_g?: number;
+    carbs_g?: number;
+    fat_g?: number;
+  };
 }
 
-interface CameraEvent {
-  id: number;
+interface NutritionTotals {
+  calories_consumed: number;
+  calories_burned: number;
+  protein_g: number;
+  carbs_g: number;
+  fat_g: number;
+  fiber_g: number;
+  water_ml: number;
+}
+
+interface ProtocolItem {
+  id: string;
+  action_type: string;
+  title: string;
   timestamp: string;
-  type: string;
-  item: string;
-  confidence: number;
-  status: string;
-  icon: string;
+  macros: { calories: number; protein_g: number; carbs_g: number; fat_g: number };
+}
+
+interface Protocol {
+  total_actions: number;
+  totals: NutritionTotals;
+  net_calories: number;
+  supplements_taken: string[];
+  items: ProtocolItem[];
 }
 
 type ConnectionStatus = 'checking' | 'connected' | 'disconnected';
+
+const actionIcons: Record<string, string> = {
+  food: '🍎',
+  supplement: '💊',
+  hydration: '💧',
+  exercise: '🏃',
+};
 
 function App() {
   const [watchData, setWatchData] = useState<SmartWatchData | null>(null);
   const [backendStatus, setBackendStatus] = useState<ConnectionStatus>('checking');
   const [cameraState, setCameraState] = useState<'loading' | 'active' | 'denied' | 'unavailable'>('loading');
-  const [currentAction, setCurrentAction] = useState('taking a supplement');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [lastAnalysis, setLastAnalysis] = useState<AnalysisResult | null>(null);
-  const [events, setEvents] = useState<CameraEvent[]>([]);
+  const [protocol, setProtocol] = useState<Protocol | null>(null);
   const [now, setNow] = useState(new Date());
+  const [actionInProgress, setActionInProgress] = useState(false);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -50,17 +81,24 @@ function App() {
     return () => clearInterval(id);
   }, []);
 
-  // Fetch smart watch data
+  // Fetch data periodically
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const res = await fetch('/api/smart-watch-data');
-        if (res.ok) {
-          const data = await res.json();
-          setWatchData(data);
+        const [watchRes, protocolRes] = await Promise.all([
+          fetch('/api/smart-watch-data'),
+          fetch('/api/protocol'),
+        ]);
+        
+        if (watchRes.ok) {
+          setWatchData(await watchRes.json());
           setBackendStatus('connected');
         } else {
           setBackendStatus('disconnected');
+        }
+        
+        if (protocolRes.ok) {
+          setProtocol(await protocolRes.json());
         }
       } catch {
         setBackendStatus('disconnected');
@@ -68,7 +106,7 @@ function App() {
     };
 
     fetchData();
-    const interval = setInterval(fetchData, 3000);
+    const interval = setInterval(fetchData, 2000);
     return () => clearInterval(interval);
   }, []);
 
@@ -77,25 +115,67 @@ function App() {
     let cancelled = false;
 
     async function start() {
+      console.log('[Camera] Starting camera initialization...');
       try {
         if (!navigator.mediaDevices?.getUserMedia) {
+          console.log('[Camera] getUserMedia not available');
           setCameraState('unavailable');
           return;
         }
+        
+        console.log('[Camera] Requesting camera access...');
         const stream = await navigator.mediaDevices.getUserMedia({
           video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
           audio: false,
         });
+        
         if (cancelled) {
+          console.log('[Camera] Cancelled, stopping stream');
           stream.getTracks().forEach(t => t.stop());
           return;
         }
+        
+        console.log('[Camera] Got stream, tracks:', stream.getTracks().length);
         streamRef.current = stream;
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
+        
+        const video = videoRef.current;
+        if (video) {
+          console.log('[Camera] Setting srcObject on video element');
+          video.srcObject = stream;
+          
+          // Try to play immediately
+          video.onloadedmetadata = () => {
+            console.log('[Camera] Metadata loaded, dimensions:', video.videoWidth, 'x', video.videoHeight);
+          };
+          
+          video.oncanplay = async () => {
+            console.log('[Camera] Can play, attempting play...');
+            try {
+              await video.play();
+              console.log('[Camera] Playing! Setting state to active');
+              setCameraState('active');
+            } catch (e) {
+              console.error('[Camera] Play failed:', e);
+            }
+          };
+          
+          // Also try play after a short delay as fallback
+          setTimeout(async () => {
+            if (video.paused && !cancelled) {
+              console.log('[Camera] Fallback: trying to play after timeout');
+              try {
+                await video.play();
+                setCameraState('active');
+              } catch (e) {
+                console.log('[Camera] Fallback play failed:', e);
+              }
+            }
+          }, 500);
+        } else {
+          console.log('[Camera] Video ref not available');
         }
-        setCameraState('active');
       } catch (err: any) {
+        console.error('[Camera] Error:', err);
         if (!cancelled) {
           setCameraState(err?.name === 'NotAllowedError' ? 'denied' : 'unavailable');
         }
@@ -119,39 +199,51 @@ function App() {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
+    // Check video is ready
+    if (video.videoWidth === 0 || video.videoHeight === 0) {
+      console.log('Video not ready yet');
+      return;
+    }
+    if (video.readyState < 2) {
+      console.log('Video readyState:', video.readyState);
+      return;
+    }
+    if (video.paused) {
+      console.log('Video paused, trying to play...');
+      video.play().catch(() => {});
+      return;
+    }
+
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
-    ctx.drawImage(video, 0, 0);
+    ctx.drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
 
-    const imageBase64 = canvas.toDataURL('image/jpeg', 0.7);
+    const imageBase64 = canvas.toDataURL('image/jpeg', 0.8);
+    
+    // Skip if image is too small (likely black)
+    if (imageBase64.length < 1000) {
+      console.log('Image too small, skipping');
+      return;
+    }
+
     setIsAnalyzing(true);
 
     try {
       const res = await fetch('/api/analyze-frame', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          image_base64: imageBase64,
-          current_action: currentAction,
-        }),
+        body: JSON.stringify({ image_base64: imageBase64 }),
       });
 
       if (res.ok) {
         const data = await res.json();
         if (data.success && data.analysis) {
           setLastAnalysis(data.analysis);
+          setActionInProgress(data.action_in_progress || false);
           
-          if (data.analysis.status !== 'not detected') {
-            const newEvent: CameraEvent = {
-              id: Date.now(),
-              timestamp: new Date().toISOString(),
-              type: data.analysis.status,
-              item: data.analysis.description.slice(0, 40),
-              confidence: data.analysis.status === 'finished' ? 95 : 75,
-              status: data.analysis.status,
-              icon: data.analysis.status === 'finished' ? '✅' : data.analysis.status === 'in progress' ? '🔄' : '🎯',
-            };
-            setEvents(prev => [newEvent, ...prev].slice(0, 10));
+          // Update protocol from response
+          if (data.protocol) {
+            setProtocol(data.protocol);
           }
         }
       }
@@ -160,12 +252,12 @@ function App() {
     } finally {
       setIsAnalyzing(false);
     }
-  }, [isAnalyzing, currentAction, backendStatus]);
+  }, [isAnalyzing, backendStatus]);
 
-  // Auto-analyze every 5 seconds
+  // Auto-analyze every second
   useEffect(() => {
     if (cameraState !== 'active' || backendStatus !== 'connected') return;
-    const interval = setInterval(analyzeFrame, 5000);
+    const interval = setInterval(analyzeFrame, 1000);
     return () => clearInterval(interval);
   }, [cameraState, backendStatus, analyzeFrame]);
 
@@ -178,114 +270,174 @@ function App() {
     }
   };
 
-  const fahrenheitToCelsius = (f: number) => ((f - 32) * 5 / 9).toFixed(1);
-
   return (
-    <div className="dashboard-container">
+    <div style={{
+      minHeight: '100vh',
+      background: '#06060c',
+      color: '#ddd',
+      fontFamily: 'system-ui, sans-serif',
+      padding: 20,
+    }}>
       {/* Header */}
-      <header className="header">
-        <div className="header-left">
-          <h1 className="logo">BLUEPRINT</h1>
-          <span className="subtitle">Health Optimizer</span>
+      <header style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 20,
+        paddingBottom: 16,
+        borderBottom: '1px solid #1a1a2e',
+      }}>
+        <div>
+          <h1 style={{ margin: 0, fontSize: 24, color: '#00ff88', letterSpacing: 4 }}>BLUEPRINT</h1>
+          <span style={{ fontSize: 11, color: '#666' }}>Health Optimizer with Nutrition Tracking</span>
         </div>
-        <div className="header-right">
-          <span className={`backend-badge ${backendStatus === 'connected' ? 'backend-connected' : 'backend-disconnected'}`}>
-            <span style={{ 
-              width: 6, 
-              height: 6, 
-              borderRadius: '50%', 
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <span style={{
+            padding: '4px 10px',
+            borderRadius: 12,
+            fontSize: 10,
+            background: backendStatus === 'connected' ? 'rgba(0,255,136,0.15)' : 'rgba(255,68,102,0.15)',
+            color: backendStatus === 'connected' ? '#00ff88' : '#ff4466',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+          }}>
+            <span style={{
+              width: 6,
+              height: 6,
+              borderRadius: '50%',
               background: backendStatus === 'connected' ? '#00ff88' : '#ff4466',
-              display: 'inline-block'
             }} />
             {backendStatus === 'connected' ? 'Backend Connected' : 'Backend Offline'}
           </span>
-          <span className="live-badge">
-            <span className="rec-dot" /> LIVE
+          <span style={{
+            padding: '4px 10px',
+            borderRadius: 12,
+            fontSize: 10,
+            background: 'rgba(255,68,102,0.15)',
+            color: '#ff4466',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+          }}>
+            <span style={{
+              width: 6,
+              height: 6,
+              borderRadius: '50%',
+              background: '#ff4466',
+              animation: 'pulse 1s infinite',
+            }} />
+            LIVE
           </span>
-          <span className="clock">
+          <span style={{ fontSize: 14, color: '#888' }}>
             {now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
           </span>
         </div>
       </header>
 
       {/* Stats Row */}
-      <div className="stats-row">
-        <div className="stat-card">
-          <span className="stat-label">Heart Rate</span>
-          <span className="stat-value" style={{ color: '#00ff88' }}>
-            {watchData?.heart_rate_bpm ?? '--'}
-            <span className="stat-unit"> bpm</span>
-          </span>
-        </div>
-        <div className="stat-card">
-          <span className="stat-label">HRV</span>
-          <span className="stat-value" style={{ color: '#00ccff' }}>
-            {watchData?.hrv_ms ?? '--'}
-            <span className="stat-unit"> ms</span>
-          </span>
-        </div>
-        <div className="stat-card">
-          <span className="stat-label">SpO2</span>
-          <span className="stat-value" style={{ color: '#a78bfa' }}>
-            {watchData?.blood_oxygen_spo2 ?? '--'}
-            <span className="stat-unit"> %</span>
-          </span>
-        </div>
-        <div className="stat-card">
-          <span className="stat-label">Temperature</span>
-          <span className="stat-value" style={{ color: '#f59e0b' }}>
-            {watchData ? fahrenheitToCelsius(watchData.body_temperature_f) : '--'}
-            <span className="stat-unit"> °C</span>
-          </span>
-        </div>
-        <div className="stat-card">
-          <span className="stat-label">Calories</span>
-          <span className="stat-value" style={{ color: '#ff6b6b' }}>
-            {watchData?.calories_burned ?? '--'}
-            <span className="stat-unit"> kcal</span>
-          </span>
-        </div>
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(6, 1fr)',
+        gap: 12,
+        marginBottom: 20,
+      }}>
+        {[
+          { label: 'Heart Rate', value: watchData?.heart_rate_bpm ?? '--', unit: 'bpm', color: '#00ff88' },
+          { label: 'HRV', value: watchData?.hrv_ms ?? '--', unit: 'ms', color: '#00ccff' },
+          { label: 'SpO2', value: watchData?.blood_oxygen_spo2 ?? '--', unit: '%', color: '#a78bfa' },
+          { label: 'Net Cal', value: protocol?.net_calories ?? 0, unit: 'kcal', color: '#ff6b6b' },
+          { label: 'Protein', value: protocol?.totals?.protein_g?.toFixed(0) ?? 0, unit: 'g', color: '#00ff88' },
+          { label: 'Actions', value: protocol?.total_actions ?? 0, unit: '', color: '#ffaa00' },
+        ].map(({ label, value, unit, color }) => (
+          <div key={label} style={{
+            background: '#0a0a14',
+            borderRadius: 12,
+            padding: '12px 16px',
+            border: '1px solid #1a1a2e',
+          }}>
+            <div style={{ fontSize: 10, color: '#666', marginBottom: 4 }}>{label.toUpperCase()}</div>
+            <div style={{ fontSize: 20, fontWeight: 700, color }}>
+              {value}<span style={{ fontSize: 11, color: '#666' }}> {unit}</span>
+            </div>
+          </div>
+        ))}
       </div>
 
       {/* Main Grid */}
-      <div className="main-grid">
-        {/* Live Camera Card */}
-        <div className="card">
-          <div className="card-header">
-            <span className="card-title">🎥 Live Camera</span>
-            {cameraState === 'active' && (
-              <span className="live-badge" style={{ fontSize: 9 }}>
-                <span className="rec-dot" /> LIVE
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
+        {/* Camera Card */}
+        <div style={{
+          background: '#0a0a14',
+          borderRadius: 16,
+          padding: 16,
+          border: '1px solid #1a1a2e',
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
+            <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, color: '#888' }}>🎥 AI CAMERA</span>
+            {actionInProgress && (
+              <span style={{
+                fontSize: 9,
+                background: 'rgba(255,170,0,0.2)',
+                color: '#ffaa00',
+                padding: '2px 8px',
+                borderRadius: 8,
+              }}>
+                ACTION IN PROGRESS
               </span>
             )}
           </div>
 
-          <div className="webcam-container">
+          <div style={{
+            position: 'relative',
+            borderRadius: 12,
+            overflow: 'hidden',
+            background: '#080810',
+            minHeight: 300,
+          }}>
+            {/* Video element always mounted so we can set srcObject */}
+            <video
+              ref={videoRef}
+              autoPlay
+              playsInline
+              muted
+              style={{ 
+                width: '100%', 
+                height: 300, 
+                objectFit: 'cover', 
+                display: cameraState === 'active' ? 'block' : 'none',
+                background: '#000',
+              }}
+            />
+            <canvas ref={canvasRef} style={{ display: 'none' }} />
+
             {cameraState === 'active' && (
               <>
-                <video
-                  ref={videoRef}
-                  autoPlay
-                  playsInline
-                  muted
-                  className="webcam-video"
-                />
-                <canvas ref={canvasRef} style={{ display: 'none' }} />
-                <div className="scanline" />
-                <div className="bracket bracket-tl" />
-                <div className="bracket bracket-tr" />
-                <div className="bracket bracket-bl" />
-                <div className="bracket bracket-br" />
-
-                {lastAnalysis && (
-                  <div className="analysis-overlay">
-                    <div 
-                      className="analysis-status"
-                      style={{ backgroundColor: getStatusColor(lastAnalysis.status) }}
-                    >
+                {lastAnalysis && lastAnalysis.status !== 'not detected' && (
+                  <div style={{
+                    position: 'absolute',
+                    bottom: 8,
+                    left: 8,
+                    right: 8,
+                    background: 'rgba(0,0,0,0.8)',
+                    borderRadius: 10,
+                    padding: '10px 14px',
+                  }}>
+                    <div style={{
+                      display: 'inline-block',
+                      fontSize: 9,
+                      fontWeight: 700,
+                      background: getStatusColor(lastAnalysis.status),
+                      color: '#000',
+                      padding: '3px 8px',
+                      borderRadius: 4,
+                      marginBottom: 6,
+                    }}>
                       {lastAnalysis.status.toUpperCase()}
                     </div>
-                    <div className="analysis-desc">{lastAnalysis.description}</div>
+                    <div style={{ fontSize: 12, color: '#ccc' }}>
+                      {lastAnalysis.title || lastAnalysis.description}
+                    </div>
                   </div>
                 )}
 
@@ -297,13 +449,9 @@ function App() {
                     background: 'rgba(0,0,0,0.7)',
                     padding: '6px 10px',
                     borderRadius: 8,
-                    fontSize: 11,
+                    fontSize: 10,
                     color: '#00ff88',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 6
                   }}>
-                    <div className="spinner" style={{ width: 14, height: 14, borderWidth: 2 }} />
                     Analyzing...
                   </div>
                 )}
@@ -311,112 +459,200 @@ function App() {
             )}
 
             {cameraState === 'loading' && (
-              <div className="webcam-placeholder">
-                <div className="spinner" />
-                <span>Requesting camera...</span>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: 300, color: '#555' }}>
+                <span style={{ fontSize: 36 }}>📷</span>
+                <span>Starting camera...</span>
               </div>
             )}
 
             {cameraState === 'denied' && (
-              <div className="webcam-placeholder">
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: 300, color: '#555' }}>
                 <span style={{ fontSize: 36 }}>🚫</span>
                 <span>Camera access denied</span>
-                <span style={{ fontSize: 11, color: '#444' }}>Allow camera in browser settings</span>
               </div>
             )}
 
             {cameraState === 'unavailable' && (
-              <div className="webcam-placeholder">
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: 300, color: '#555' }}>
                 <span style={{ fontSize: 36 }}>📷</span>
                 <span>No camera available</span>
               </div>
             )}
           </div>
 
-          <div className="webcam-controls">
-            <label style={{ fontSize: 11, color: '#666' }}>Detecting:</label>
-            <select
-              className="webcam-select"
-              value={currentAction}
-              onChange={(e) => setCurrentAction(e.target.value)}
-            >
-              <option value="taking a supplement">Taking supplement</option>
-              <option value="drinking water">Drinking water</option>
-              <option value="eating a meal">Eating meal</option>
-              <option value="exercising">Exercising</option>
-              <option value="meditation">Meditation</option>
-            </select>
-            <button
-              className="analyze-btn"
-              onClick={analyzeFrame}
-              disabled={isAnalyzing || cameraState !== 'active' || backendStatus !== 'connected'}
-            >
-              {isAnalyzing ? '...' : 'Analyze Now'}
-            </button>
+          <div style={{ marginTop: 12, fontSize: 11, color: '#555', textAlign: 'center' }}>
+            AI auto-detects: 💊 Supplements · 🍎 Food · 💧 Hydration · 🏃 Exercise
+          </div>
+        </div>
+
+        {/* Nutrition Card */}
+        <div style={{
+          background: '#0a0a14',
+          borderRadius: 16,
+          padding: 16,
+          border: '1px solid #1a1a2e',
+        }}>
+          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, color: '#888', marginBottom: 12 }}>📊 NUTRITION TRACKER</div>
+
+          {/* Calorie Summary */}
+          <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
+            <div style={{ flex: 1, background: '#0e0e18', borderRadius: 10, padding: 12, textAlign: 'center' }}>
+              <div style={{ fontSize: 10, color: '#666' }}>🍎 CONSUMED</div>
+              <div style={{ fontSize: 20, fontWeight: 700, color: '#ffaa00' }}>+{protocol?.totals?.calories_consumed ?? 0}</div>
+              <div style={{ fontSize: 10, color: '#666' }}>kcal</div>
+            </div>
+            <div style={{ flex: 1, background: '#0e0e18', borderRadius: 10, padding: 12, textAlign: 'center' }}>
+              <div style={{ fontSize: 10, color: '#666' }}>🔥 BURNED</div>
+              <div style={{ fontSize: 20, fontWeight: 700, color: '#ff6b6b' }}>-{protocol?.totals?.calories_burned ?? 0}</div>
+              <div style={{ fontSize: 10, color: '#666' }}>kcal</div>
+            </div>
+            <div style={{ flex: 1, background: '#0e0e18', borderRadius: 10, padding: 12, textAlign: 'center' }}>
+              <div style={{ fontSize: 10, color: '#666' }}>⚡ NET</div>
+              <div style={{ fontSize: 20, fontWeight: 700, color: '#00ff88' }}>{protocol?.net_calories ?? 0}</div>
+              <div style={{ fontSize: 10, color: '#666' }}>kcal</div>
+            </div>
           </div>
 
-          {watchData && (
-            <div className="watch-data-bar">
-              <span>🏃 {watchData.steps_today} steps</span>
-              <span>😤 {watchData.stress_level}</span>
-              <span>⏱️ {watchData.active_minutes} min active</span>
+          {/* Macro Bars */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {[
+              { label: 'Protein', value: protocol?.totals?.protein_g ?? 0, max: 150, color: '#00ff88' },
+              { label: 'Carbs', value: protocol?.totals?.carbs_g ?? 0, max: 300, color: '#ffaa00' },
+              { label: 'Fat', value: protocol?.totals?.fat_g ?? 0, max: 80, color: '#ff6b6b' },
+              { label: 'Fiber', value: protocol?.totals?.fiber_g ?? 0, max: 30, color: '#a78bfa' },
+            ].map(({ label, value, max, color }) => (
+              <div key={label}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, marginBottom: 4 }}>
+                  <span style={{ color: '#888' }}>{label}</span>
+                  <span style={{ color, fontWeight: 600 }}>{value.toFixed(1)}g</span>
+                </div>
+                <div style={{ height: 8, background: '#1a1a2e', borderRadius: 4, overflow: 'hidden' }}>
+                  <div style={{
+                    height: '100%',
+                    width: `${Math.min((value / max) * 100, 100)}%`,
+                    background: color,
+                    borderRadius: 4,
+                    transition: 'width 0.5s ease',
+                  }} />
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Hydration */}
+          {(protocol?.totals?.water_ml ?? 0) > 0 && (
+            <div style={{
+              marginTop: 16,
+              padding: 12,
+              background: '#0e0e18',
+              borderRadius: 10,
+              border: '1px solid rgba(0,204,255,0.2)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10,
+            }}>
+              <span style={{ fontSize: 20 }}>💧</span>
+              <span style={{ fontSize: 16, fontWeight: 700, color: '#00ccff' }}>{protocol?.totals?.water_ml} ml</span>
+              <span style={{ fontSize: 11, color: '#666' }}>hydration</span>
             </div>
           )}
         </div>
+      </div>
 
-        {/* Detection Events Card */}
-        <div className="card">
-          <div className="card-header">
-            <span className="card-title">📸 Detection Events</span>
-            <span style={{ fontSize: 11, color: '#555' }}>{events.length} events</span>
+      {/* Health Log */}
+      <div style={{
+        background: '#0a0a14',
+        borderRadius: 16,
+        padding: 16,
+        border: '1px solid #1a1a2e',
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
+          <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, color: '#888' }}>📋 HEALTH LOG</span>
+          <span style={{ fontSize: 11, color: '#00ff88' }}>{protocol?.total_actions ?? 0} actions</span>
+        </div>
+
+        {/* Supplements Summary */}
+        {(protocol?.supplements_taken?.length ?? 0) > 0 && (
+          <div style={{
+            padding: 10,
+            background: '#0e0e18',
+            borderRadius: 10,
+            border: '1px solid rgba(167,139,250,0.2)',
+            marginBottom: 12,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+          }}>
+            <span style={{ fontSize: 18 }}>💊</span>
+            <span style={{ fontSize: 12, color: '#a78bfa' }}>{protocol?.supplements_taken?.join(', ')}</span>
           </div>
+        )}
 
-          <div className="events-list">
-            {events.length === 0 ? (
-              <div style={{ 
-                display: 'flex', 
-                flexDirection: 'column', 
-                alignItems: 'center', 
-                justifyContent: 'center',
-                minHeight: 200,
-                color: '#444',
-                gap: 8
-              }}>
-                <span style={{ fontSize: 36 }}>👁️</span>
-                <span>No events detected yet</span>
-                <span style={{ fontSize: 11 }}>Camera will auto-analyze every 5 seconds</span>
-              </div>
-            ) : (
-              events.map((event) => (
-                <div key={event.id} className="event-item">
-                  <span className="event-icon">{event.icon}</span>
-                  <div className="event-content">
-                    <div className="event-title">{event.item}</div>
-                    <div className="event-meta">
-                      {new Date(event.timestamp).toLocaleTimeString()} · {event.confidence}% confidence
+        {/* Items List */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 250, overflowY: 'auto' }}>
+          {(protocol?.items?.length ?? 0) === 0 ? (
+            <div style={{ textAlign: 'center', padding: 40, color: '#444' }}>
+              <div style={{ fontSize: 32, marginBottom: 8 }}>👁️</div>
+              <div>No health actions yet</div>
+              <div style={{ fontSize: 11, marginTop: 4 }}>Take supplements, eat food, or exercise</div>
+            </div>
+          ) : (
+            protocol?.items?.slice().reverse().map((item) => {
+              const icon = actionIcons[item.action_type] || '✅';
+              const time = new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+              const cals = item.macros?.calories ?? 0;
+              const macroText = item.action_type === 'food' && item.macros?.protein_g 
+                ? ` · P:${item.macros.protein_g.toFixed(0)}g C:${item.macros.carbs_g.toFixed(0)}g F:${item.macros.fat_g.toFixed(0)}g`
+                : '';
+              return (
+                <div key={item.id} style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                  padding: '10px 12px',
+                  background: '#0e0e18',
+                  borderRadius: 10,
+                  borderLeft: `3px solid ${
+                    item.action_type === 'food' ? '#ffaa00' :
+                    item.action_type === 'supplement' ? '#a78bfa' :
+                    item.action_type === 'hydration' ? '#00ccff' :
+                    '#ff6b6b'
+                  }`,
+                }}>
+                  <span style={{ fontSize: 18 }}>{icon}</span>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600 }}>{item.title}</div>
+                    <div style={{ fontSize: 10, color: '#666' }}>
+                      {time}{cals !== 0 ? ` · ${cals > 0 ? '+' : ''}${cals} kcal` : ''}{macroText}
                     </div>
                   </div>
                 </div>
-              ))
-            )}
-          </div>
+              );
+            })
+          )}
         </div>
       </div>
 
       {/* Footer */}
-      <footer style={{ 
-        marginTop: 24, 
-        paddingTop: 16, 
+      <footer style={{
+        marginTop: 20,
+        paddingTop: 16,
         borderTop: '1px solid #1a1a2e',
         display: 'flex',
         justifyContent: 'space-between',
-        alignItems: 'center'
+        fontSize: 11,
+        color: '#444',
       }}>
-        <span style={{ fontSize: 11, color: '#444' }}>Blueprint Health Optimizer · Powered by MCP</span>
-        <span style={{ fontSize: 11, color: '#333' }}>
-          Backend: {backendStatus === 'connected' ? '✅ localhost:8000' : '❌ offline'}
-        </span>
+        <span>Blueprint Health Optimizer · Powered by Gemini AI</span>
+        <span>Backend: {backendStatus === 'connected' ? '✅ Connected' : '❌ Offline'}</span>
       </footer>
+
+      <style>{`
+        @keyframes pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.5; }
+        }
+      `}</style>
     </div>
   );
 }
