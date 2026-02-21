@@ -1,0 +1,97 @@
+{
+  "date": "2026-02-21",
+  "profile": "Blueprint Protocol",
+  "protocol": [
+    {
+      "name": "Vitamin D3 + K2",
+      "dose": "4000 IU + 100 mcg",
+      "scheduledTime": "06:30",
+      "actualTime": "06:31",
+      "status": "taken",
+      "detectedBy": "camera",
+      "category": "morning"
+    },
+    {
+      "name": "Omega-3 Fish Oil",
+      "dose": "2g",
+      "scheduledTime": "06:30",
+      "actualTime": "06:32",
+      "status": "taken",
+      "detectedBy": "camera",
+      "category": "morning"
+    },
+    {
+      "name": "Creatine Monohydrate",
+      "dose": "5g",
+      "scheduledTime": "06:30",
+      "actualTime": "06:33",
+      "status": "taken",
+      "detectedBy": "camera",
+      "category": "morning"
+    },
+    {
+      "name": "Collagen Peptides",
+      "dose": "15g",
+      "scheduledTime": "06:45",
+      "actualTime": "06:34",
+      "status": "taken",
+      "detectedBy": "camera",
+      "category": "morning"
+    },
+    {
+      "name": "Whey Protein Isolate",
+      "dose": "30g",
+      "scheduledTime": "07:30",
+      "actualTime": "07:35",
+      "status": "taken",
+      "detectedBy": "camera",
+      "category": "post_workout"
+    },
+    {
+      "name": "NR (Nicotinamide Riboside)",
+      "dose": "300 mg",
+      "scheduledTime": "12:00",
+      "actualTime": "12:05",
+      "status": "taken",
+      "detectedBy": "camera",
+      "category": "midday"
+    },
+    {
+      "name": "Ashwagandha KSM-66",
+      "dose": "600 mg",
+      "scheduledTime": "07:00",
+      "actualTime": null,
+      "status": "missed",
+      "detectedBy": null,
+      "category": "morning"
+    },
+    {
+      "name": "Magnesium Glycinate",
+      "dose": "400 mg",
+      "scheduledTime": "21:00",
+      "actualTime": null,
+      "status": "pending",
+      "detectedBy": null,
+      "category": "evening"
+    },
+    {
+      "name": "Melatonin (micro-dose)",
+      "dose": "300 mcg",
+      "scheduledTime": "21:00",
+      "actualTime": null,
+      "status": "pending",
+      "detectedBy": null,
+      "category": "evening"
+    },
+    {
+      "name": "Rapamycin",
+      "dose": "6 mg",
+      "scheduledTime": "06:30",
+      "actualTime": null,
+      "status": "weekly_skip",
+      "detectedBy": null,
+      "category": "morning",
+      "note": "Taken on Sundays only"
+    }
+  ]
+}

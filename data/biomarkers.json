@@ -1,0 +1,51 @@
+{
+  "profile": "Bryan Johnson Inspired",
+  "collectedAt": "2026-02-21T08:30:00Z",
+  "metrics": [
+    {
+      "id": "resting_heart_rate",
+      "label": "Resting Heart Rate",
+      "value": 52,
+      "unit": "bpm",
+      "targetMin": 45,
+      "targetMax": 55,
+      "source": "smart_watch"
+    },
+    {
+      "id": "hrv_rmssd",
+      "label": "HRV (RMSSD)",
+      "value": 73,
+      "unit": "ms",
+      "targetMin": 60,
+      "targetMax": 95,
+      "source": "smart_watch"
+    },
+    {
+      "id": "deep_sleep",
+      "label": "Deep Sleep",
+      "value": 97,
+      "unit": "min",
+      "targetMin": 90,
+      "targetMax": 130,
+      "source": "smart_watch"
+    },
+    {
+      "id": "focus_minutes",
+      "label": "Focus Minutes",
+      "value": 184,
+      "unit": "min",
+      "targetMin": 150,
+      "targetMax": 240,
+      "source": "smart_glasses"
+    },
+    {
+      "id": "stress_events",
+      "label": "Stress Events",
+      "value": 4,
+      "unit": "count",
+      "targetMin": 0,
+      "targetMax": 5,
+      "source": "smart_glasses"
+    }
+  ]
+}

@@ -1,0 +1,33 @@
+{
+  "collectedAt": "2026-02-21T08:30:00Z",
+  "protocol": [
+    {
+      "name": "Omega-3",
+      "dose": "2 g",
+      "time": "morning",
+      "adherence": 0.92,
+      "goal": "Cardiovascular support"
+    },
+    {
+      "name": "Magnesium Glycinate",
+      "dose": "400 mg",
+      "time": "evening",
+      "adherence": 0.88,
+      "goal": "Sleep quality"
+    },
+    {
+      "name": "Creatine Monohydrate",
+      "dose": "5 g",
+      "time": "post-workout",
+      "adherence": 0.76,
+      "goal": "Muscle and cognitive support"
+    },
+    {
+      "name": "Vitamin D3 + K2",
+      "dose": "4000 IU + 100 mcg",
+      "time": "morning",
+      "adherence": 0.95,
+      "goal": "Hormonal and bone health"
+    }
+  ]
+}
