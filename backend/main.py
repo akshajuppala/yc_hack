@@ -10,13 +10,14 @@ Flow:
 
 from fastmcp import FastMCP
 from dotenv import load_dotenv
+import base64
 import json
 import os
 import random
 import io
 from typing import Optional
 
-from agent import AgentState, ActionProgress, interpret_image, interpret_video
+from agent import AgentState, ActionProgress, interpret_image, interpret_video, protocol_manager
 
 load_dotenv()
 
@@ -66,10 +67,12 @@ def get_smart_watch_data(override_data: str | None = None) -> str:
     return json.dumps(data, indent=2)
 
 
-@mcp.tool(task=True)
-def interpret_health_snapshot(img_bytes: bytes, current_action: str = "") -> str:
+@mcp.tool()
+def interpret_health_snapshot(img_bytes: str, current_action: str = "") -> str:
     """
     Interpret a health snapshot image and auto-detect health actions.
+    
+    img_bytes should be a base64-encoded JPEG image string (no data: prefix).
     
     The AI automatically detects actions like taking supplements, drinking water,
     eating, exercising, etc. No need to specify the action - it will be detected.
@@ -81,8 +84,14 @@ def interpret_health_snapshot(img_bytes: bytes, current_action: str = "") -> str
     """
     global frame_buffer
     
+    # Decode base64 string to raw bytes for the LLM
+    raw = img_bytes if isinstance(img_bytes, str) else img_bytes.decode("utf-8") if isinstance(img_bytes, bytes) else str(img_bytes)
+    if raw.startswith("data:"):
+        raw = raw.split(",", 1)[1]
+    image_data = base64.b64decode(raw)
+    
     # Analyze the current frame
-    result = interpret_image(img_bytes, agent_state, current_action)
+    result = interpret_image(image_data, agent_state, current_action)
     
     # Parse the result to check status
     try:
@@ -95,7 +104,7 @@ def interpret_health_snapshot(img_bytes: bytes, current_action: str = "") -> str
     # Buffer management based on action progress
     if status in ["started", "in progress"]:
         # Add frame to buffer (keep recent frames only)
-        frame_buffer.append(img_bytes)
+        frame_buffer.append(image_data)
         if len(frame_buffer) > MAX_BUFFER_FRAMES:
             frame_buffer.pop(0)
         
@@ -137,7 +146,7 @@ def interpret_health_snapshot(img_bytes: bytes, current_action: str = "") -> str
         })
 
 
-@mcp.tool(task=True)
+@mcp.tool()
 def interpret_video_stream(video_frames: bytes) -> str:
     """
     Interpret a video stream and return a summary of what is on screen.
@@ -145,6 +154,12 @@ def interpret_video_stream(video_frames: bytes) -> str:
     Use this for analyzing recorded video clips or compiled frame sequences.
     """
     return interpret_video(video_frames)
+
+
+@mcp.tool()
+def get_protocol() -> str:
+    """Get the current health protocol with nutrition totals, supplements taken, and all detected actions."""
+    return json.dumps(protocol_manager.get_summary())
 
 
 @mcp.tool()

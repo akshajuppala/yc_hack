@@ -298,6 +298,11 @@ def _coerce_content(content: Any) -> str:
 # Image interpretation
 # ---------------------------------------------------------------------------
 
+def interpret_video(video_frames: bytes) -> str:
+    """Interpret a video stream (placeholder — not yet implemented)."""
+    return json.dumps({"summary": "Video analysis not yet implemented", "frames": 0})
+
+
 def interpret_image(
     image_bytes: bytes,
     agent_state: AgentState,

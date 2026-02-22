@@ -1,14 +1,13 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
+import { useMcp } from "mcp-use/react";
 import "./styles.css";
 
-// Components
 import { VitalsChart } from "../resources/health-dashboard/components/VitalsChart";
 import { WebcamFeed } from "../resources/health-dashboard/components/WebcamFeed";
 import { CameraFeed } from "../resources/health-dashboard/components/CameraFeed";
 
-const BACKEND_URL = "http://localhost:8000";
+const MCP_URL = import.meta.env.VITE_MCP_URL || "http://localhost:3000/mcp";
 
-// Types
 interface CameraEvent {
   id: number;
   timestamp: string;
@@ -81,7 +80,6 @@ interface WatchData {
   steps_today: number;
 }
 
-// Action type icons
 const actionIcons: Record<string, string> = {
   food: "🍎",
   supplement: "💊",
@@ -89,7 +87,22 @@ const actionIcons: Record<string, string> = {
   exercise: "🏃",
 };
 
-// ── Score Ring ───────────────────────────────────────────────────────────────
+function parseMcpResult(result: any): any {
+  if (!result) return null;
+  const content = result?.content;
+  if (Array.isArray(content)) {
+    const textItem = content.find((c: any) => c.type === "text");
+    if (textItem?.text) {
+      try {
+        return JSON.parse(textItem.text);
+      } catch {
+        return textItem.text;
+      }
+    }
+  }
+  return result;
+}
+
 const ScoreRing: React.FC<{ score: number; total: number }> = ({ score, total }) => {
   const r = 38;
   const circ = 2 * Math.PI * r;
@@ -117,7 +130,6 @@ const ScoreRing: React.FC<{ score: number; total: number }> = ({ score, total })
   );
 };
 
-// ── Stat Pill ────────────────────────────────────────────────────────────────
 const Stat: React.FC<{ label: string; value: string | number; unit: string; color: string }> = ({
   label, value, unit, color,
 }) => (
@@ -129,7 +141,6 @@ const Stat: React.FC<{ label: string; value: string | number; unit: string; colo
   </div>
 );
 
-// ── Macro Bar ────────────────────────────────────────────────────────────────
 const MacroBar: React.FC<{ label: string; value: number; max: number; color: string; unit: string }> = ({
   label, value, max, color, unit
 }) => {
@@ -147,7 +158,6 @@ const MacroBar: React.FC<{ label: string; value: number; max: number; color: str
   );
 };
 
-// ── Nutrition Dashboard ──────────────────────────────────────────────────────
 const NutritionDashboard: React.FC<{ totals: NutritionTotals; netCalories: number }> = ({ totals, netCalories }) => {
   return (
     <div className="nutrition-dashboard">
@@ -155,7 +165,6 @@ const NutritionDashboard: React.FC<{ totals: NutritionTotals; netCalories: numbe
         <span className="nutrition-title">📊 NUTRITION TRACKER</span>
       </div>
       
-      {/* Calorie Ring */}
       <div className="calorie-ring-container">
         <div className="calorie-ring">
           <div className="calorie-ring-inner">
@@ -175,7 +184,6 @@ const NutritionDashboard: React.FC<{ totals: NutritionTotals; netCalories: numbe
         </div>
       </div>
       
-      {/* Macro Bars */}
       <div className="macro-bars">
         <MacroBar label="Protein" value={totals.protein_g} max={150} color="#00ff88" unit="g" />
         <MacroBar label="Carbs" value={totals.carbs_g} max={300} color="#ffaa00" unit="g" />
@@ -183,7 +191,6 @@ const NutritionDashboard: React.FC<{ totals: NutritionTotals; netCalories: numbe
         <MacroBar label="Fiber" value={totals.fiber_g} max={30} color="#a78bfa" unit="g" />
       </div>
       
-      {/* Hydration */}
       {totals.water_ml > 0 && (
         <div className="hydration-tracker">
           <span className="hydration-icon">💧</span>
@@ -195,7 +202,6 @@ const NutritionDashboard: React.FC<{ totals: NutritionTotals; netCalories: numbe
   );
 };
 
-// ── Protocol List with Nutrition ─────────────────────────────────────────────
 const ProtocolList: React.FC<{ protocol: Protocol }> = ({ protocol }) => {
   if (protocol.items.length === 0) {
     return (
@@ -220,7 +226,6 @@ const ProtocolList: React.FC<{ protocol: Protocol }> = ({ protocol }) => {
         <span className="protocol-count">{protocol.total_actions} actions</span>
       </div>
       
-      {/* Supplements Summary */}
       {protocol.supplements_taken.length > 0 && (
         <div className="supplements-summary">
           <span className="supplements-icon">💊</span>
@@ -237,7 +242,6 @@ const ProtocolList: React.FC<{ protocol: Protocol }> = ({ protocol }) => {
           const cals = item.macros.calories;
           const calText = cals !== 0 ? ` • ${cals > 0 ? "+" : ""}${cals} kcal` : "";
           
-          // Build macro summary for food
           let macroText = "";
           if (item.action_type === "food" && item.macros.protein_g > 0) {
             macroText = ` • P:${item.macros.protein_g.toFixed(0)}g C:${item.macros.carbs_g.toFixed(0)}g F:${item.macros.fat_g.toFixed(0)}g`;
@@ -260,22 +264,26 @@ const ProtocolList: React.FC<{ protocol: Protocol }> = ({ protocol }) => {
   );
 };
 
-// ── Main App ─────────────────────────────────────────────────────────────────
+const MCP_STATE_LABELS: Record<string, { label: string; color: string }> = {
+  discovering: { label: "CONNECTING", color: "#ffaa00" },
+  pending_auth: { label: "AUTH REQUIRED", color: "#ff4466" },
+  authenticating: { label: "AUTHENTICATING", color: "#ffaa00" },
+  ready: { label: "MCP CONNECTED", color: "#00ff88" },
+  failed: { label: "MCP OFFLINE", color: "#ff4466" },
+};
+
 const App: React.FC = () => {
+  const mcp = useMcp({ url: MCP_URL, autoReconnect: 3000 });
+
   const [now, setNow] = useState(new Date());
   const [detectedEvents, setDetectedEvents] = useState<CameraEvent[]>([]);
   const [eventIdCounter, setEventIdCounter] = useState(1);
   const [protocol, setProtocol] = useState<Protocol>({ 
     total_actions: 0, 
     totals: {
-      calories_consumed: 0,
-      calories_burned: 0,
-      protein_g: 0,
-      carbs_g: 0,
-      fat_g: 0,
-      fiber_g: 0,
-      sugar_g: 0,
-      water_ml: 0,
+      calories_consumed: 0, calories_burned: 0,
+      protein_g: 0, carbs_g: 0, fat_g: 0,
+      fiber_g: 0, sugar_g: 0, water_ml: 0,
     },
     net_calories: 0,
     supplements_taken: [],
@@ -284,19 +292,20 @@ const App: React.FC = () => {
   const [watchData, setWatchData] = useState<WatchData | null>(null);
   const [vitalsHistory, setVitalsHistory] = useState<{ hr: number[]; hrv: number[] }>({ hr: [], hrv: [] });
 
-  // Clock update
   useEffect(() => {
     const id = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(id);
   }, []);
 
-  // Fetch watch data
+  // Fetch watch data via MCP
   useEffect(() => {
+    if (mcp.state !== "ready") return;
+
     const fetchData = async () => {
       try {
-        const res = await fetch(`${BACKEND_URL}/api/smart-watch-data`);
-        if (res.ok) {
-          const data = await res.json();
+        const result = await mcp.callTool("get-smart-watch-data", {});
+        const data = parseMcpResult(result);
+        if (data && typeof data === "object" && data.heart_rate_bpm) {
           setWatchData(data);
           setVitalsHistory(prev => ({
             hr: [...prev.hr.slice(-59), data.heart_rate_bpm],
@@ -304,33 +313,46 @@ const App: React.FC = () => {
           }));
         }
       } catch (err) {
-        console.log("Failed to fetch watch data");
+        console.log("MCP watch data fetch failed:", err);
       }
     };
     fetchData();
     const interval = setInterval(fetchData, 3000);
     return () => clearInterval(interval);
-  }, []);
+  }, [mcp.state, mcp.callTool]);
 
-  // Fetch protocol
+  // Fetch protocol via MCP
   useEffect(() => {
+    if (mcp.state !== "ready") return;
+
     const fetchProtocol = async () => {
       try {
-        const res = await fetch(`${BACKEND_URL}/api/protocol`);
-        if (res.ok) {
-          const data = await res.json();
+        const result = await mcp.callTool("get-protocol", {});
+        const data = parseMcpResult(result);
+        if (data && typeof data === "object" && data.totals) {
           setProtocol(data);
         }
       } catch (err) {
-        console.log("Failed to fetch protocol");
+        console.log("MCP protocol fetch failed:", err);
       }
     };
     fetchProtocol();
     const interval = setInterval(fetchProtocol, 2000);
     return () => clearInterval(interval);
-  }, []);
+  }, [mcp.state, mcp.callTool]);
 
-  // Handle analysis results
+  // MCP-backed frame analysis callback for WebcamFeed
+  const handleAnalyzeFrame = useCallback(async (imageBase64: string): Promise<any> => {
+    if (mcp.state !== "ready") return null;
+    try {
+      const result = await mcp.callTool("analyze-frame", { imageBase64 });
+      return parseMcpResult(result);
+    } catch (err) {
+      console.log("MCP frame analysis failed:", err);
+      return null;
+    }
+  }, [mcp.state, mcp.callTool]);
+
   const handleAnalysisUpdate = useCallback((result: AnalysisResult) => {
     const title = result.title || result.description.slice(0, 40);
     const actionType = result.action_type || "food";
@@ -346,14 +368,15 @@ const App: React.FC = () => {
       icon: icon,
     };
 
-    console.log("Adding detection:", newEvent);
     setEventIdCounter((c) => c + 1);
     setDetectedEvents((prev) => [newEvent, ...prev].slice(0, 20));
   }, [eventIdCounter]);
 
+  const mcpStatus = MCP_STATE_LABELS[mcp.state] ?? { label: mcp.state, color: "#666" };
+
   return (
     <div className="bp-root" style={{ maxWidth: 900, margin: "0 auto" }}>
-      {/* ── Header ────────────────────────────────────── */}
+      {/* Header */}
       <div className="bp-header">
         <div className="bp-header-left">
           <ScoreRing score={protocol.total_actions} total={10} />
@@ -366,14 +389,19 @@ const App: React.FC = () => {
           </div>
         </div>
         <div className="bp-header-right">
-          <span className="bp-live-badge">
-            <span className="rec-dot" /> LIVE
+          <span className="bp-live-badge" style={{ color: mcpStatus.color, borderColor: `${mcpStatus.color}40`, background: `${mcpStatus.color}15` }}>
+            <span className="rec-dot" style={{ background: mcpStatus.color }} /> {mcpStatus.label}
           </span>
           <span className="bp-view-badge">AI MONITOR</span>
+          {mcp.state === "ready" && mcp.tools.length > 0 && (
+            <span style={{ fontSize: 9, color: "#555", letterSpacing: 1 }}>
+              {mcp.tools.length} MCP TOOLS
+            </span>
+          )}
         </div>
       </div>
 
-      {/* ── Quick Stats ───────────────────────────────── */}
+      {/* Quick Stats */}
       <div className="bp-stats-row">
         <Stat label="HEART RATE" value={watchData?.heart_rate_bpm || "--"} unit="bpm" color="#00ff88" />
         <Stat label="HRV" value={watchData?.hrv_ms || "--"} unit="ms" color="#00ccff" />
@@ -382,7 +410,7 @@ const App: React.FC = () => {
         <Stat label="PROTEIN" value={protocol.totals.protein_g.toFixed(0)} unit="g" color="#00ff88" />
       </div>
 
-      {/* ── Vitals Chart ──────────────────────────────── */}
+      {/* Vitals Chart */}
       {vitalsHistory.hr.length > 5 && (
         <div className="bp-card">
           <VitalsChart
@@ -394,17 +422,21 @@ const App: React.FC = () => {
         </div>
       )}
 
-      {/* ── Row 1: Webcam + Detections ─────────────────── */}
+      {/* Webcam + Detections */}
       <div className="bp-split">
         <div className="bp-card bp-split-cell">
-          <WebcamFeed onAnalysisUpdate={handleAnalysisUpdate} />
+          <WebcamFeed
+            onAnalysisUpdate={handleAnalysisUpdate}
+            onAnalyzeFrame={handleAnalyzeFrame}
+            mcpConnected={mcp.state === "ready"}
+          />
         </div>
         <div className="bp-card bp-split-cell">
           <CameraFeed events={detectedEvents} />
         </div>
       </div>
 
-      {/* ── Row 2: Nutrition + Protocol ─────────────────── */}
+      {/* Nutrition + Protocol */}
       <div className="bp-split">
         <div className="bp-card bp-split-cell">
           <NutritionDashboard totals={protocol.totals} netCalories={protocol.net_calories} />
@@ -414,9 +446,9 @@ const App: React.FC = () => {
         </div>
       </div>
 
-      {/* ── Footer ────────────────────────────────────── */}
+      {/* Footer */}
       <div className="bp-footer">
-        <span className="bp-footer-mfg">Powered by Gemini AI</span>
+        <span className="bp-footer-mfg">Powered by MCP + Gemini AI</span>
         <span className="bp-footer-mfg">Blueprint Health Optimizer</span>
       </div>
     </div>

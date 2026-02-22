@@ -5,6 +5,12 @@ type CamState = "loading" | "active" | "simulated" | "denied" | "unavailable";
 interface AnalysisResult {
   status: string;
   description: string;
+  action?: string;
+  action_type?: string;
+  title?: string;
+  action_in_progress?: boolean;
+  action_completed?: boolean;
+  frames_buffered?: number;
 }
 
 interface SmartWatchData {
@@ -19,8 +25,6 @@ interface SmartWatchData {
   hrv_ms: number;
   active_minutes: number;
 }
-
-const BACKEND_URL = "http://localhost:8000";
 
 /* ── Simulated camera view (fallback when camera unavailable) ────────────── */
 const SimulatedView: React.FC = () => {
@@ -95,105 +99,53 @@ const SimulatedView: React.FC = () => {
 export const WebcamFeed: React.FC<{
   onSmartWatchUpdate?: (data: SmartWatchData) => void;
   onAnalysisUpdate?: (result: AnalysisResult) => void;
-}> = ({ onSmartWatchUpdate, onAnalysisUpdate }) => {
+  onAnalyzeFrame?: (imageBase64: string) => Promise<any>;
+  mcpConnected?: boolean;
+}> = ({ onSmartWatchUpdate, onAnalysisUpdate, onAnalyzeFrame, mcpConnected = false }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [state, setState] = useState<CamState>("loading");
   const streamRef = useRef<MediaStream | null>(null);
   const [lastAnalysis, setLastAnalysis] = useState<AnalysisResult | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [watchData, setWatchData] = useState<SmartWatchData | null>(null);
   const [actionInProgress, setActionInProgress] = useState(false);
   const [framesBuffered, setFramesBuffered] = useState(0);
-  const [backendStatus, setBackendStatus] = useState<"connected" | "disconnected" | "checking">("checking");
 
-  // Fetch smart watch data periodically via direct HTTP
-  useEffect(() => {
-    const fetchWatchData = async () => {
-      try {
-        const res = await fetch(`${BACKEND_URL}/api/smart-watch-data`);
-        if (res.ok) {
-          const data = await res.json();
-          setWatchData(data);
-          setBackendStatus("connected");
-          onSmartWatchUpdate?.(data);
-        } else {
-          setBackendStatus("disconnected");
-        }
-      } catch (err) {
-        console.log("Backend not available");
-        setBackendStatus("disconnected");
-      }
-    };
-
-    fetchWatchData();
-    const interval = setInterval(fetchWatchData, 3000);
-    return () => clearInterval(interval);
-  }, [onSmartWatchUpdate]);
-
-  // Analyze frame via direct HTTP - AI auto-detects actions
   const handleAnalyzeFrame = useCallback(async () => {
-    if (!videoRef.current || !canvasRef.current || isAnalyzing) return;
+    if (!videoRef.current || !canvasRef.current || isAnalyzing || !onAnalyzeFrame) return;
 
     const video = videoRef.current;
     const canvas = canvasRef.current;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    // Ensure video has valid content before capturing
-    // readyState 4 = HAVE_ENOUGH_DATA (video is playing with frames)
-    if (video.videoWidth === 0 || video.videoHeight === 0) {
-      console.log("[WebcamFeed] Video dimensions not ready, skipping");
-      return;
-    }
-    if (video.readyState < 2) {
-      console.log("[WebcamFeed] Video not ready (readyState:", video.readyState, "), skipping");
-      return;
-    }
+    if (video.videoWidth === 0 || video.videoHeight === 0) return;
+    if (video.readyState < 2) return;
     if (video.paused) {
-      console.log("[WebcamFeed] Video is paused, trying to play...");
       video.play().catch(() => {});
       return;
     }
 
-    // Set canvas dimensions and draw the video frame
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
     ctx.drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
 
-    // Convert to base64 JPEG
     const imageBase64 = canvas.toDataURL("image/jpeg", 0.8);
-    
-    // Verify we got actual image data (not just a tiny black image)
-    if (imageBase64.length < 1000) {
-      console.log("[WebcamFeed] Image too small, skipping frame");
-      return;
-    }
+    if (imageBase64.length < 1000) return;
 
     setIsAnalyzing(true);
 
     try {
-      const res = await fetch(`${BACKEND_URL}/api/analyze-frame`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          image_base64: imageBase64,
-        }),
-      });
+      const data = await onAnalyzeFrame(imageBase64);
+      if (data && typeof data === "object") {
+        if (data.success !== false && (data.analysis || data.status || data.description)) {
+          const analysis = data.analysis || data;
+          setLastAnalysis(analysis);
+          setActionInProgress(data.action_in_progress || analysis.action_in_progress || false);
+          setFramesBuffered(data.frames_buffered || analysis.frames_buffered || 0);
 
-      if (res.ok) {
-        const data = await res.json();
-        if (data.success && data.analysis) {
-          setLastAnalysis(data.analysis);
-          setActionInProgress(data.action_in_progress || false);
-          setFramesBuffered(data.frames_buffered || 0);
-          
-          // Only push UI update when action is COMPLETED
-          if (data.action_completed) {
-            console.log("Action completed! Pushing update:", data.analysis);
-            onAnalysisUpdate?.(data.analysis);
-          } else if (data.action_in_progress) {
-            console.log(`Action in progress: ${data.analysis.action} (${data.frames_buffered} frames)`);
+          if (data.action_completed || analysis.action_completed) {
+            onAnalysisUpdate?.(analysis);
           }
         }
       }
@@ -202,18 +154,18 @@ export const WebcamFeed: React.FC<{
     } finally {
       setIsAnalyzing(false);
     }
-  }, [isAnalyzing, onAnalysisUpdate]);
+  }, [isAnalyzing, onAnalyzeFrame, onAnalysisUpdate]);
 
-  // Auto-analyze every 1 second when camera is active and backend connected
+  // Auto-analyze every 1 second when camera is active and MCP is connected
   useEffect(() => {
-    if (state !== "active" || backendStatus !== "connected") return;
-    
+    if (state !== "active" || !mcpConnected || !onAnalyzeFrame) return;
+
     const interval = setInterval(() => {
       handleAnalyzeFrame();
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [state, backendStatus, handleAnalyzeFrame]);
+  }, [state, mcpConnected, onAnalyzeFrame, handleAnalyzeFrame]);
 
   // Start camera
   useEffect(() => {
@@ -222,7 +174,6 @@ export const WebcamFeed: React.FC<{
     async function start() {
       try {
         if (!navigator.mediaDevices?.getUserMedia) {
-          console.error("[WebcamFeed] navigator.mediaDevices.getUserMedia is not available");
           setState("simulated");
           return;
         }
@@ -237,24 +188,18 @@ export const WebcamFeed: React.FC<{
         streamRef.current = stream;
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
-          
-          // Wait for video to be ready and start playing
           videoRef.current.onloadedmetadata = async () => {
             try {
               await videoRef.current?.play();
-              console.log(`[WebcamFeed] Camera playing: ${videoRef.current?.videoWidth}x${videoRef.current?.videoHeight}`);
               setState("active");
-            } catch (playErr) {
-              console.error("[WebcamFeed] Failed to play video:", playErr);
+            } catch {
               setState("simulated");
             }
           };
         } else {
           setState("active");
         }
-      } catch (err: unknown) {
-        const e = err instanceof Error ? err : new Error(String(err));
-        console.error(`[WebcamFeed] Camera error — name: ${e.name}, message: ${e.message}`);
+      } catch {
         if (!cancelled) setState("simulated");
       }
     }
@@ -281,9 +226,9 @@ export const WebcamFeed: React.FC<{
       <div className="webcam-header">
         <span className="webcam-title">{"\uD83C\uDFA5"} LIVE CAMERA</span>
         <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-          {backendStatus === "connected" && (
+          {mcpConnected && (
             <span className="webcam-badge" style={{ background: "rgba(0,255,136,0.1)", color: "#00ff88" }}>
-              <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#00ff88", display: "inline-block" }} /> Backend
+              <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#00ff88", display: "inline-block" }} /> MCP
             </span>
           )}
           <span className="webcam-badge">
@@ -293,7 +238,6 @@ export const WebcamFeed: React.FC<{
       </div>
 
       <div className="webcam-viewport">
-        {/* Video element - always in DOM for ref */}
         <video
           ref={videoRef}
           autoPlay
@@ -304,7 +248,6 @@ export const WebcamFeed: React.FC<{
         />
         <canvas ref={canvasRef} style={{ display: "none" }} />
 
-        {/* Loading spinner */}
         {state === "loading" && (
           <div className="webcam-placeholder">
             <div className="webcam-spinner" />
@@ -312,22 +255,17 @@ export const WebcamFeed: React.FC<{
           </div>
         )}
 
-        {/* Simulated AI vision view (fallback) */}
         {state === "simulated" && <SimulatedView />}
-
-        {/* Scan-line overlay */}
         {state === "active" && <div className="webcam-scanline" />}
 
-        {/* Corner brackets */}
         <div className="webcam-bracket webcam-bracket-tl" />
         <div className="webcam-bracket webcam-bracket-tr" />
         <div className="webcam-bracket webcam-bracket-bl" />
         <div className="webcam-bracket webcam-bracket-br" />
 
-        {/* Analysis overlay */}
         {state === "active" && lastAnalysis && (
           <div className="webcam-analysis-overlay">
-            <div 
+            <div
               className="webcam-status-badge"
               style={{ backgroundColor: getStatusColor(lastAnalysis.status) }}
             >
@@ -339,7 +277,6 @@ export const WebcamFeed: React.FC<{
           </div>
         )}
 
-        {/* Analyzing indicator */}
         {isAnalyzing && (
           <div className="webcam-analyzing">
             <div className="webcam-spinner-small" />
@@ -348,23 +285,22 @@ export const WebcamFeed: React.FC<{
         )}
       </div>
 
-      {/* Auto-detection status */}
       <div className="webcam-controls">
         <div style={{ display: "flex", alignItems: "center", gap: 8, flex: 1 }}>
           <span className="webcam-action-label">AI Auto-Detect:</span>
           {actionInProgress ? (
-            <span style={{ 
-              color: "#ffaa00", 
-              fontSize: 11, 
+            <span style={{
+              color: "#ffaa00",
+              fontSize: 11,
               fontWeight: 600,
               display: "flex",
               alignItems: "center",
               gap: 6
             }}>
-              <span style={{ 
-                width: 8, 
-                height: 8, 
-                borderRadius: "50%", 
+              <span style={{
+                width: 8,
+                height: 8,
+                borderRadius: "50%",
                 background: "#ffaa00",
                 animation: "rec-pulse 1s infinite"
               }} />
@@ -376,35 +312,25 @@ export const WebcamFeed: React.FC<{
             </span>
           )}
         </div>
-        <button 
+        <button
           className="webcam-analyze-btn"
           onClick={handleAnalyzeFrame}
-          disabled={isAnalyzing || state !== "active" || backendStatus !== "connected"}
+          disabled={isAnalyzing || state !== "active" || !mcpConnected || !onAnalyzeFrame}
         >
           {isAnalyzing ? "..." : "Scan"}
         </button>
       </div>
 
-      {/* Smart watch data mini display */}
-      {watchData && (
-        <div className="webcam-watch-data">
-          <span>❤️ {watchData.heart_rate_bpm} bpm</span>
-          <span>💨 {watchData.blood_oxygen_spo2}%</span>
-          <span>🏃 {watchData.steps_today} steps</span>
-        </div>
-      )}
-
-      {/* Backend status warning */}
-      {backendStatus === "disconnected" && (
-        <div style={{ 
-          marginTop: 8, 
-          padding: "8px 12px", 
-          background: "rgba(255,68,102,0.1)", 
+      {!mcpConnected && (
+        <div style={{
+          marginTop: 8,
+          padding: "8px 12px",
+          background: "rgba(255,68,102,0.1)",
           borderRadius: 8,
           fontSize: 11,
           color: "#ff4466"
         }}>
-          ⚠️ Python backend not running on port 8000
+          ⚠️ MCP server not connected
         </div>
       )}
     </div>

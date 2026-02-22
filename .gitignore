@@ -6,6 +6,9 @@ backend/.pytest_cache
 backend/venv
 backend/.venv
 
+# Old venv (committed by mistake)
+yc_hack/
+
 # Dependencies
 node_modules/
 .pnpm-store/
